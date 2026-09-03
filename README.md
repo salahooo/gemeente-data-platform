@@ -2,16 +2,21 @@
 
 Een portfolio-project voor functies rond data bij Nederlandse gemeenten en de overheid. Het project krijgt uiteindelijk een reproduceerbare dataketen voor gemeentelijke CBS-data.
 
-## Huidige fase: projectbasis
+## Huidige fase: CBS-metadata ophalen
 
-Op dit moment is alleen de professionele Python-projectbasis ingericht:
+De professionele Python-projectbasis is ingericht en kan metadata ophalen uit de
+CBS Open Data API voor dataset `03759ned`. Het metadata-endpoint `TableInfos`
+wordt opgehaald en als leesbare UTF-8-JSON opgeslagen in
+`data/raw/03759ned_table_info.json`.
 
 - Python 3.11+-project met een `src`-layout;
 - centrale, omgevingsvariabele-gebaseerde configuratie;
 - basisstructuur voor data, SQL, notebooks en documentatie;
-- een minimale uitvoerbare applicatie, rooktest en codekwaliteitsconfiguratie.
+- een minimale uitvoerbare applicatie, rooktest en codekwaliteitsconfiguratie;
+- een kleine CBS-client voor uitsluitend datasetmetadata.
 
-Er is nog **geen** koppeling met de CBS Open Data API, PostgreSQL, SQL-transformaties of Power BI.
+Er worden nog **geen** bevolkingsgegevens getransformeerd of geladen. PostgreSQL,
+SQL-transformaties en Power BI zijn evenmin geïmplementeerd.
 
 ## Geplande vervolgfases
 
@@ -21,7 +26,12 @@ Er is nog **geen** koppeling met de CBS Open Data API, PostgreSQL, SQL-transform
 4. Analyse- en rapportageviews opbouwen met SQL.
 5. Dashboards ontwikkelen in Power BI.
 
-De beoogde architectuur staat in [docs/architecture.md](docs/architecture.md).
+## Architectuur
+
+- [Architectuuroverzicht](docs/architecture.md)
+- [TOGAF-light architectuurbeschrijving](docs/togaf-alignment.md)
+- [ADR-register](docs/decisions/README.md)
+- [ADR-001: afzonderlijke herbruikbare CBS OData-client](docs/decisions/ADR-001-cbs-odata-client.md)
 
 ## Lokaal starten
 
@@ -32,6 +42,7 @@ expliciet Python 3.14 op Windows PowerShell.
 py -3.14 -m pip install --user --upgrade pip
 py -3.14 -m pip install --user -e ".[dev]"
 py -3.14 -m gemeente_data_platform.main
+py -3.14 -m gemeente_data_platform.fetch_metadata
 py -3.14 -m pytest
 py -3.14 -m ruff check .
 ```

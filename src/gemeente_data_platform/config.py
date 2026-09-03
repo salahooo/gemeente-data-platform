@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     app_env: str = "development"
     log_level: str = "INFO"
     database_url: str | None = None
+    cbs_base_url: str = "https://opendata.cbs.nl/ODataApi/OData"
+    cbs_dataset_code: str = "03759ned"
+    cbs_request_timeout: float = 30.0
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
