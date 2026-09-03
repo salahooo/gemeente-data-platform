@@ -1,0 +1,33 @@
+# Environment variables and secrets
+.env
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Editor settings
+.vscode/
+
+# Generated data (keep directory placeholders tracked)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
