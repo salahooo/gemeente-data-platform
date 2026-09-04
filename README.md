@@ -2,13 +2,14 @@
 
 Een portfolio-project voor functies rond data bij Nederlandse gemeenten en de overheid. Het project krijgt uiteindelijk een reproduceerbare dataketen voor gemeentelijke CBS-data.
 
-## Huidige fase: CBS-dimensies en raw bevolkingsdata ophalen
+## Huidige fase: gevalideerde processed bevolkingsdata
 
-De professionele Python-projectbasis ontdekt dimensies en haalt ongetransformeerde
+De professionele Python-projectbasis ontdekt dimensies, haalt ongetransformeerde
 bevolkingsrecords voor gemeentecodes op uit de CBS Open Data API voor dataset
-`03759ned`. De run valideert dimensiecodes, perioden en records voordat de raw
-CBS-responses in een unieke UTC-runmap onder `data/raw/cbs/03759ned/` worden
-opgeslagen.
+`03759ned` en bouwt daaruit een reproduceerbare processed laag. De raw extractie
+valideert dimensiecodes, perioden en records voordat CBS-responses in een unieke
+UTC-runmap onder `data/raw/cbs/03759ned/` worden opgeslagen. De transformatie
+gebruikt daarna uitsluitend zo'n lokaal gevalideerde raw run.
 
 - Python 3.11+-project met een `src`-layout;
 - centrale, omgevingsvariabele-gebaseerde configuratie;
@@ -17,28 +18,32 @@ opgeslagen.
 - een CBS-client met timeout, retries en begrensde paginering;
 - dimensieontdekking en gerichte, raw extractie voor perioden vanaf 2020;
 - atomaire JSON-opslag, checksums en een manifest per extractierun.
+- drie gevalideerde processed tabellen: `dim_municipality`, `dim_period` en
+  `fact_population`;
+- Parquet als technische bron en UTF-8-CSV als leesbare export, met een manifest,
+  checksums, kwaliteitsrapport en atomaire publicatie per processed run.
 
-Er worden nog **geen** bevolkingsgegevens hernoemd, geaggregeerd,
-getransformeerd of geladen. Historische gemeentecodes blijven in raw data
-behouden. Een actieve gemeentewaarneming is in dit project een gemeente-jaarrecord
+Historische gemeentecodes worden niet geharmoniseerd of samengevoegd. Een actieve
+gemeentewaarneming is in dit project een gemeente-jaarrecord
 met een geldige numerieke bevolking op 1 januari; ontbrekend is niet nul.
 PostgreSQL, SQL-transformaties en Power BI zijn evenmin geïmplementeerd.
 
 ## Geplande vervolgfases
 
-1. Gemeentelijke gegevens ophalen uit de CBS Open Data API.
-2. Gegevens valideren en transformeren met Python en Pandas.
-3. Verwerkte gegevens laden in PostgreSQL met SQLAlchemy en Psycopg.
-4. Analyse- en rapportageviews opbouwen met SQL.
-5. Dashboards ontwikkelen in Power BI.
+1. Verwerkte gegevens laden in PostgreSQL met SQLAlchemy en Psycopg.
+2. Analyse- en rapportageviews opbouwen met SQL.
+3. Dashboards ontwikkelen in Power BI.
 
 ## Architectuur
 
 - [Architectuuroverzicht](docs/architecture.md)
 - [TOGAF-light architectuurbeschrijving](docs/togaf-alignment.md)
 - [CBS-datacontract](docs/data-contract.md)
+- [Processed-datacontract](docs/processed-data-contract.md)
 - [ADR-register](docs/decisions/README.md)
 - [ADR-001: afzonderlijke herbruikbare CBS OData-client](docs/decisions/ADR-001-cbs-odata-client.md)
+- [ADR-002: historische gemeentecodes behouden](docs/decisions/ADR-002-historical-municipality-codes.md)
+- [ADR-003: Parquet als canonieke processed opslag](docs/decisions/ADR-003-parquet-as-canonical-processed-storage.md)
 
 ## Lokaal starten
 
@@ -51,6 +56,7 @@ py -3.14 -m pip install --user -e ".[dev]"
 py -3.14 -m gemeente_data_platform.main
 py -3.14 -m gemeente_data_platform.fetch_metadata
 py -3.14 -m gemeente_data_platform.extract_population
+py -3.14 -m gemeente_data_platform.transform_population
 py -3.14 -m pytest
 py -3.14 -m ruff check .
 ```
@@ -67,6 +73,20 @@ Elke metadata- of extractierun schrijft naar een unieke UTC-runmap:
 opgehaalde metadata, dimensies, `population_records.json`, `quality_report.json`
 en `manifest.json`.
 Zie het [CBS-datacontract](docs/data-contract.md) voor de bestandsstructuur,
-validaties en de grens tussen raw extractie en latere transformatie. De
-processed-laag zal in een volgende fase alleen bruikbare gemeente-jaarwaarnemingen
-modelleren.
+validaties en de grens tussen raw extractie en transformatie. De processed-laag
+modelleert alleen bruikbare gemeente-jaarwaarnemingen.
+
+## Processed laag
+
+De transformatie selecteert standaard de nieuwste volledig geldige raw run. Kies
+eventueel reproduceerbaar een specifieke run met `--raw-run`:
+
+```powershell
+py -3.14 -m gemeente_data_platform.transform_population --raw-run 20260904T004750415349Z
+```
+
+Elke processed run komt onder `data/processed/cbs/03759ned/<utc-run-id>/` terecht.
+De map bevat Parquet- en CSV-versies van de drie tabellen, `quality_report.json`
+en `manifest.json`. Generated data wordt niet door Git gevolgd. Zie het
+[processed-datacontract](docs/processed-data-contract.md) voor schema's,
+selectieregels en validaties.

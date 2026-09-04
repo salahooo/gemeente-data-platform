@@ -1,91 +1,84 @@
 # TOGAF-light architectuurbeschrijving
 
 Dit project gebruikt relevante TOGAF-denkprincipes voor structurering en
-communicatie, maar voert geen volledig TOGAF ADM-traject uit. De beschrijving
-is daarom proportioneel voor een portfolio-project en geen certificering of
-claim van volledige TOGAF-implementatie.
+communicatie, maar voert geen volledig TOGAF ADM-traject uit. De beschrijving is
+proportioneel voor een portfolio-project en is geen certificering of claim van
+volledige TOGAF-implementatie.
 
 ## Architectuurweergaven en aanpak
 
-De [C4-weergaven](architecture.md) maken de architectuur op drie afzonderlijke
-niveaus zichtbaar: niveau 1 toont de systeemcontext, niveau 2 de containers en
-niveau 3 de componenten van de Python-applicatie. C4 beschrijft daarmee de
-technische structuur en relaties.
-
-TOGAF-light helpt in dit project bij de architectuurvisie, stakeholders, eisen
-en migratiestappen. Het is geen volledige TOGAF ADM-implementatie. Huidige en
-doelarchitectuur blijven hieronder bewust gescheiden.
+De [C4-weergaven](architecture.md) visualiseren de technische architectuur op
+drie afzonderlijke niveaus: niveau 1 systeemcontext, niveau 2 containers en
+niveau 3 componenten. Dezelfde documentatie toont ook dynamisch gedrag en
+lineage. TOGAF-light ondersteunt hier de visie, stakeholders, eisen, risico's en
+migratiestappen rond die technische weergaven.
 
 ## Architectuurvisie
 
 Een transparante, herhaalbare dataketen maken voor openbare CBS-data over
-Nederlandse gemeenten. De keten begint klein met controleerbare metadata en
-kan later uitgroeien naar een analyse- en rapportagevoorziening.
+Nederlandse gemeenten. De keten bouwt van gecontroleerde raw brondata naar
+analyseklare tabellen, en kan later naar database- en rapportagelagen groeien.
 
 ## Zakelijke aanleiding
 
 Datafuncties bij gemeenten hebben baat bij herleidbare bronnen, voorspelbare
 verwerking en toegankelijke rapportage. Dit project demonstreert die werkwijze
-met een openbare CBS-dataset, zonder gemeentelijke persoonsgegevens te
-verwerken.
+met een openbare CBS-dataset, zonder gemeentelijke persoonsgegevens.
 
 ## Stakeholders en belangen
 
 | Stakeholder | Belang |
 | --- | --- |
-| Data-analist | Begrijpelijke bronmetadata en betrouwbare herhaalbaarheid |
+| Data-analist | Begrijpelijke bron, reproduceerbare tabellen en kwaliteitsinformatie |
 | Beleidsmedewerker | Toekomstige, toegankelijke inzichten over gemeentelijke data |
 | Technisch beheerder | Kleine, testbare componenten en heldere configuratie |
 | CBS | Correct en respectvol gebruik van de openbare OData API |
 
 ## Functionele eisen
 
-- De applicatie haalt metadata op voor CBS-dataset `03759ned`.
-- De API-client gebruikt een sessie, User-Agent, timeout en HTTP-statuscontrole.
-- De metadata wordt als leesbare UTF-8-JSON in `data/raw/` opgeslagen.
-- Fouten door netwerk, HTTP of JSON worden niet stilzwijgend genegeerd.
+- Metadata, dimensies en geselecteerde raw bevolkingsrecords voor `03759ned`
+  worden gecontroleerd opgehaald.
+- Een gevalideerde raw run wordt lokaal naar drie processed tabellen omgezet.
+- De processed run bevat Parquet, CSV, kwaliteitsinformatie, checksums en een
+  manifest met herkomst.
+- Een specifieke raw run is selecteerbaar voor reproduceerbare verwerking.
 
 ## Niet-functionele eisen
 
 - Configuratie via omgevingsvariabelen met veilige standaardwaarden.
-- Offline testbaarheid door HTTP-responses te mocken.
-- Python 3.11+ als minimale projectvereiste; validatie met Python 3.14.
-- Broncodekwaliteit gecontroleerd met pytest en Ruff.
+- Offline testbaarheid door HTTP-responses en opslag te mocken.
+- Raw data blijft onveranderd; publicatie gebeurt atomair na validatie.
+- Python 3.11+ is de minimale projectvereiste; validatie gebruikt Python 3.14.
+- Broncodekwaliteit wordt gecontroleerd met pytest en Ruff.
 
-## Huidige architectuur: fase 2B
+## Huidige architectuur: fase 3
 
-Fase 2B bestaat uit configuratie, een herbruikbare CBS API-client,
-dimensieontdekking, contractvalidatie, atomaire raw opslag en een
-extractie-opdracht. De applicatie haalt `TableInfos`, dimensies en een gerichte
-set gemeentelijke `TypedDataSet`-records op vanaf 2020. Per run worden JSON,
-een kwaliteitsrapport, checksums en een manifest in een UTC-runmap opgeslagen.
-Historische GM-codes blijven raw behouden; actieve gemeentewaarnemingen zijn een
-projectspecificieke afleiding uit geldige januari-populaties en ontbrekend is
-niet nul. PostgreSQL,
-SQL-transformaties en Power BI bestaan nog niet in de implementatie. Dit is de
-bestaande situatie die in de C4-weergaven met **bestaand** of **extern** is
-aangeduid.
+De huidige implementatie bevat de bestaande onderdelen in alle drie C4-niveaus:
+een Python-applicatie, de externe CBS OData API, raw JSON-runmappen en processed
+Parquet-, CSV- en JSON-runmappen. Een transformatie selecteert de nieuwste
+volledige geldige raw run of een expliciete run, valideert de inhoud en bouwt
+`dim_municipality`, `dim_period` en `fact_population`. Historische GM-codes
+worden niet geharmoniseerd. PostgreSQL, SQL-views en Power BI bestaan nog niet.
 
 ## Doelarchitectuur: toekomstig
 
-De beoogde keten is: CBS OData API naar Python-transformatie, vervolgens
-PostgreSQL en SQL-views, met Power BI als presentatielaag. Deze onderdelen zijn
-toekomstig en vallen buiten fase 2A. In de C4-weergaven zijn zij als
-**toekomstig** gemarkeerd.
+De beoogde keten is CBS OData API naar Python-verwerking, vervolgens PostgreSQL
+en SQL-views, met Power BI als presentatielaag. Dit zijn toekomstig geplande
+onderdelen en geen fase-3-functionaliteit.
 
 ## Belangrijkste tussenstappen
 
-1. Dimensieontdekking en raw extractie stabiel houden en bronstructuur bewaken.
-2. Een beperkte transformatielaag en aanvullende datavalidatie ontwerpen.
-3. Een PostgreSQL-laag en herhaalbare laadstap toevoegen.
-4. SQL-views en Power BI-rapportage ontwikkelen.
+1. Processed-datacontract en raw-herleidbaarheid stabiel houden.
+2. PostgreSQL-laag en herhaalbare laadstap ontwerpen en toevoegen.
+3. SQL-views voor analyse ontwikkelen.
+4. Power BI-rapportage boven de analysegegevens ontwikkelen.
 
 ## Risico's en beheersmaatregelen
 
 | Risico | Beheersmaatregel |
 | --- | --- |
-| CBS API is tijdelijk niet bereikbaar | Configureerbare timeout en expliciete netwerkfout |
-| API retourneert een foutstatus | `raise_for_status()` en een duidelijke `CbsHttpError` |
-| API-response is geen geldige JSON | Expliciete JSON-validatie en `CbsInvalidJsonError` |
-| Bronstructuur wijzigt | Metadata lokaal vastleggen en toekomstige validatieregels toevoegen |
-| Scope groeit te snel | Fasen scheiden; alleen raw extractie is nu geïmplementeerd |
+| CBS-bron wijzigt | Metadata, raw manifesten en contractvalidaties vastleggen |
+| Onvolledige raw run | Manifest- en checksumcontrole vóór transformatie |
+| Niet-herleidbare verwerking | Raw run-id en raw-manifestchecksum in processed manifest |
+| Fout bij wegschrijven | Tijdelijke map, herlezing, validatie en atomaire publicatie |
+| Scope groeit te snel | Fasen scheiden; database en Power BI blijven toekomstig |

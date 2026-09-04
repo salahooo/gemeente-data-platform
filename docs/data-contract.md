@@ -66,6 +66,10 @@ Een `gemeentecode` is iedere unieke GM-code in de raw extractie, inclusief histo
 
 De run stopt bij een gebroken contract: collecties moeten `value`-lijsten bevatten; dimensiecodes bestaan; GM-codes zijn uniek en geldig; perioden zijn geldig en vanaf 2020; records hebben verplichte velden; gemeente-periodecombinaties zijn uniek; iedere periode heeft actieve waarnemingen; januariwaarden zijn voor actieve waarnemingen niet-negatieve gehele getallen; de extractie is niet leeg; checksums zijn opnieuw bevestigd.
 
-## Grens met latere transformatie
+## Grens met processed transformatie
 
-Fase 2B bewaart CBS-records zonder hernoemen, aggregeren of inhoudelijk wijzigen. Indicatoren, opschonen, modelleren en laden in PostgreSQL behoren tot latere fasen.
+De raw landing zone bewaart CBS-records zonder hernoemen, aggregeren of
+inhoudelijk wijzigen. Fase 3 leest uitsluitend een volledig gevalideerde raw run
+en schrijft een afzonderlijke processed run; raw bestanden worden nooit
+gewijzigd. Zie het [processed-datacontract](processed-data-contract.md) voor
+selectie, modellering, outputvalidatie en herkomst. PostgreSQL blijft toekomstig.
