@@ -27,6 +27,9 @@ updates:
     groups:
       github-actions:
         patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker
     directory: "/"
     schedule:
