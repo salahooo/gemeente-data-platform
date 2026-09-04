@@ -7,7 +7,7 @@ import {api} from "./api";
 vi.mock("./api", () => ({api: {
   ready: vi.fn(), years: vi.fn(), national: vi.fn(), ranking: vi.fn(),
   municipalities: vi.fn(), municipality: vi.fn(), population: vi.fn(),
-}}));
+}, publicApiUrl: (path: string) => path}));
 
 const mockedApi = vi.mocked(api);
 

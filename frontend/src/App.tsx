@@ -1,7 +1,7 @@
 import {useEffect, useState} from "react";
 import {Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from "recharts";
 
-import {api} from "./api";
+import {api, publicApiUrl} from "./api";
 import {number, percent} from "./format";
 import type {Municipality, National, Observation, Ranking, Year} from "./types";
 
@@ -85,7 +85,7 @@ export function App() {
     <header>
       <div><p className="eyebrow">CBS bevolkingsdata · read-only analytics</p><h1>Gemeente Data Platform</h1></div>
       <div className={`status ${status === "Beschikbaar" ? "ok" : "bad"}`} aria-live="polite">API: {status}</div>
-      <a href="/docs">API-documentatie</a><button onClick={() => void load()}>Vernieuwen</button>
+      <a href={publicApiUrl("/docs")}>API-documentatie</a><button onClick={() => void load()}>Vernieuwen</button>
     </header>
     <section className="filters" aria-label="Dashboardfilters">
       <label>Jaar<select value={year} onChange={(event) => setYear(Number(event.target.value))}>{years.map((item) => <option key={item.year} value={item.year}>{item.year}</option>)}</select></label>

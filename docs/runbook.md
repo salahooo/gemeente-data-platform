@@ -1,5 +1,11 @@
 # Runbook lokale PostgreSQL
 
+## Publieke cloud (nog niet gedeployed)
+
+Gebruik de expliciete procedure in [cloud database bootstrap](cloud-database-bootstrap.md),
+nooit een API-start voor migrations of pipeline. De lokale Compose-services,
+5433-developmentdatabase en 5434-testdatabase blijven het lokale runbook volgen.
+
 ## Read-only API
 
 Start met `docker compose --profile api up -d api`; verifieer `/health` en

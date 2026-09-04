@@ -77,6 +77,11 @@ dependency-resolutie is gelockt voor CI, terwijl `pyproject.toml` de bron blijft
 
 ## Doelarchitectuur: toekomstig
 
+De eerste publieke demonstratiestap is voorbereid: Render Static Site -> Render
+FastAPI Web Service -> externe managed PostgreSQL met SSL. Dit is bewust een
+portfolio-demo zonder SLA; provideraccounts, kostencontrole en backupbeleid zijn
+voor activatie handmatige governance-stappen. Zie [deployment](deployment.md).
+
 De beoogde keten breidt de gerealiseerde CBS OData-, Python-, PostgreSQL- en
 SQL-viewlagen uit met scheduling, beheerde opslag, backup/herstel en Power BI als
 presentatielaag. Deze uitbreidingen zijn toekomstig.

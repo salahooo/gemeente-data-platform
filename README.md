@@ -69,7 +69,7 @@ Stop zonder volumes te verwijderen: `docker compose --profile dashboard stop das
 - [Architectuur en C4](docs/architecture.md) · [databaseontwerp/ERD](docs/database-design.md)
 - [Raw contract](docs/data-contract.md) · [processed contract](docs/processed-data-contract.md)
 - [API](docs/api.md) · [dashboard](docs/dashboard.md) · [pipeline operations](docs/pipeline-operations.md)
-- [Runbook](docs/runbook.md) · [CI/CD](docs/ci-cd.md) · [TOGAF-light](docs/togaf-alignment.md)
+- [Runbook](docs/runbook.md) · [CI/CD](docs/ci-cd.md) · [Clouddeployment](docs/deployment.md) · [TOGAF-light](docs/togaf-alignment.md)
 - [ADR-register](docs/decisions/README.md) · [portfolio-walkthrough](docs/portfolio-walkthrough.md)
 
 ## Aanbevolen GitHub-presentatie

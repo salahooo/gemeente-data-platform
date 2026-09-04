@@ -1,8 +1,7 @@
 # ADR-register
 
-De nieuwste vastlegging is [ADR-010: React/Vite-dashboard achter same-origin
-API-proxy](ADR-010-react-vite-dashboard.md). ADR-009 beschrijft de bestaande
-read-only analytics API waarop het dashboard aansluit.
+De nieuwste vastlegging is [ADR-011: Render frontend/API en externe managed
+PostgreSQL](ADR-011-render-and-managed-postgresql-deployment.md).
 
 Dit register bevat alleen vastgelegde Architecture Decision Records (ADR's).
 
@@ -16,3 +15,4 @@ Dit register bevat alleen vastgelegde Architecture Decision Records (ADR's).
 | ADR-006 | Alembic voor schema migrations | Accepted | 2026-09-04 | [ADR-006](ADR-006-alembic-schema-migrations.md) |
 | ADR-007 | Georkestreerde pipeline-run en operationele lineage | Accepted | 2026-09-04 | [ADR-007](ADR-007-pipeline-orchestration-and-lineage.md) |
 | ADR-008 | Geïsoleerde CI en gelockte dependencies | Accepted | 2026-09-04 | [ADR-008](ADR-008-ci-isolation-and-locked-dependencies.md) |
+| ADR-011 | Render frontend/API en externe managed PostgreSQL | Accepted | 2026-09-04 | [ADR-011](ADR-011-render-and-managed-postgresql-deployment.md) |
