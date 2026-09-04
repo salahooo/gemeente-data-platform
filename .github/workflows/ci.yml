@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/setup-node@1e60f620b9541d21b38e1a2e8f8c3f5d2d729746
+      - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
