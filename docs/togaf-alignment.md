@@ -1,6 +1,6 @@
 # TOGAF-light architectuurbeschrijving
 
-## Fase 7: read-only API
+## Fase 8: read-only API en dashboard
 
 De FastAPI-container is een bestaande applicatielaag tussen afnemers en mart.
 Een eigen least-privilege rol ondersteunt het securityprincipe; dashboard en

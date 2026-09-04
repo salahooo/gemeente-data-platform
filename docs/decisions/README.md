@@ -1,5 +1,9 @@
 # ADR-register
 
+De nieuwste vastlegging is [ADR-010: React/Vite-dashboard achter same-origin
+API-proxy](ADR-010-react-vite-dashboard.md). ADR-009 beschrijft de bestaande
+read-only analytics API waarop het dashboard aansluit.
+
 Dit register bevat alleen vastgelegde Architecture Decision Records (ADR's).
 
 | ADR-nummer | Titel | Status | Datum | ADR |

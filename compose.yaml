@@ -61,7 +61,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-    profiles: ["api"]
+    profiles: ["api", "dashboard"]
     ports:
       - "${API_PORT:-8000}:8000"
     environment:
@@ -85,6 +85,25 @@ services:
     restart: unless-stopped
     labels:
       com.gemeente-data-platform.component: api
+      com.gemeente-data-platform.managed: "true"
+
+  dashboard:
+    build:
+      context: ./frontend
+    profiles: ["dashboard"]
+    ports:
+      - "${DASHBOARD_PORT:-3000}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/ >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    labels:
+      com.gemeente-data-platform.component: dashboard
       com.gemeente-data-platform.managed: "true"
 
 volumes:

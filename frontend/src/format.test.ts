@@ -1,0 +1,1 @@
+import {describe,expect,it} from "vitest";import {number,percent} from "./format";describe("formatters",()=>{it("formats Dutch values and null",()=>{expect(number(1234567)).toBe("1.234.567");expect(number(null)).toBe("Niet beschikbaar");expect(percent(null)).toBe("Niet beschikbaar")})});

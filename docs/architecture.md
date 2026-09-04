@@ -1,8 +1,12 @@
 # Architectuur
 
-## Read-only analytics API (fase 7)
+## Read-only analytics API en dashboard (fase 8)
+
+Het dashboard is bestaand; alleen Power BI is nog toekomstig.
 
 FastAPI is een afzonderlijke container boven uitsluitend PostgreSQL `mart`-views.
+Het React-dashboard is een afzonderlijke Nginx-container die alleen same-origin
+HTTP-routes naar deze read-only API proxy't en nooit PostgreSQL of secrets ziet.
 De service gebruikt `gemeente_api`; `core`, `ops`, raw en processed zijn geen
 API-bronnen. Dashboard en Power BI blijven toekomstig.
 

@@ -12,6 +12,12 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 .ci-audit-requirements.txt
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+frontend/tsconfig.tsbuildinfo
 
 # Virtual environments
 .venv/

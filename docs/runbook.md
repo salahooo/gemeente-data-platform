@@ -5,6 +5,13 @@
 Start met `docker compose --profile api up -d api`; verifieer `/health` en
 `/ready` en stop alleen die service met `docker compose --profile api stop api`.
 
+## Dashboard
+
+Start met `docker compose --profile dashboard up -d dashboard` en controleer
+`docker compose ps`, `/ready`, `/api/v1/years`, een directe dashboardroute en
+`/docs` op poort 3000. Stop alleen de dashboardservice; PostgreSQL op 5433
+blijft draaien. Het dashboard voert uitsluitend read-only API-aanvragen uit.
+
 Start de projectdatabase: `docker compose up -d postgres`. Stop zonder het
 volume te verwijderen: `docker compose stop postgres`. Gebruik nooit `down -v`.
 Controleer met `docker compose ps` en
