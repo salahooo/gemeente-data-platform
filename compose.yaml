@@ -13,6 +13,7 @@ services:
     secrets:
       - postgres_password
       - app_password
+      - api_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -41,6 +42,7 @@ services:
     secrets:
       - postgres_password
       - app_password
+      - api_password
     volumes:
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     tmpfs:
@@ -55,6 +57,36 @@ services:
       com.gemeente-data-platform.component: postgres-test
       com.gemeente-data-platform.managed: "true"
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    profiles: ["api"]
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: gemeente_data
+      API_DATABASE_USER: gemeente_api
+      API_DATABASE_PASSWORD_FILE: /run/secrets/api_password
+      API_ALLOWED_ORIGINS: "${API_ALLOWED_ORIGINS:-}"
+    secrets:
+      - api_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    labels:
+      com.gemeente-data-platform.component: api
+      com.gemeente-data-platform.managed: "true"
+
 volumes:
   postgres_data:
     labels:
@@ -66,3 +98,5 @@ secrets:
     file: ./secrets/postgres_password.txt
   app_password:
     file: ./secrets/app_password.txt
+  api_password:
+    file: ./secrets/api_password.txt

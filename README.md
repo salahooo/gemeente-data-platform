@@ -1,5 +1,9 @@
 # Gemeente Data Platform
 
+De read-only FastAPI analytics API is beschikbaar op `localhost:8000` via het
+Compose-profiel `api`; zie [API-documentatie](docs/api.md). Zij leest uitsluitend
+`mart`-views met de aparte loginrol `gemeente_api`.
+
 [![CI](https://github.com/salahooo/gemeente-data-platform/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/salahooo/gemeente-data-platform/actions/workflows/ci.yml)
 
 Een portfolio-project voor functies rond data bij Nederlandse gemeenten en de overheid. Het project krijgt uiteindelijk een reproduceerbare dataketen voor gemeentelijke CBS-data.

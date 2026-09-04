@@ -88,7 +88,7 @@ def test_migration_lifecycle_objects_and_revision(engine):
             c.execute(
                 text("SELECT version_num FROM public.alembic_version")
             ).scalar_one()
-            == "20260904_03"
+            == "20260904_04"
         )
         assert (
             c.execute(
@@ -104,7 +104,7 @@ def test_migration_lifecycle_objects_and_revision(engine):
                     "SELECT count(*) FROM information_schema.views WHERE table_schema = 'mart'"
                 )
             ).scalar_one()
-            == 3
+            == 4
         )
 
 

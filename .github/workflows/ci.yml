@@ -87,8 +87,11 @@ jobs:
           umask 077
           python -c "import secrets; print(secrets.token_urlsafe(32))" > secrets/app_password.txt
           python -c "import secrets; print(secrets.token_urlsafe(32))" > secrets/postgres_password.txt
+          python -c "import secrets; print(secrets.token_urlsafe(32))" > secrets/api_password.txt
           # File-backed Compose secrets are bind-mounted; init scripts run as postgres.
-          chmod 0444 secrets/app_password.txt secrets/postgres_password.txt
+          chmod 0444 secrets/app_password.txt secrets/postgres_password.txt secrets/api_password.txt
+      - name: Build API image without publishing
+        run: docker compose --profile api build api
       - name: Start isolated PostgreSQL test service
         run: docker compose --profile test up -d --wait --no-deps postgres_test
       - name: Show PostgreSQL test logs after startup failure
@@ -104,4 +107,4 @@ jobs:
         shell: bash
         run: |
           docker compose --profile test rm -f -s postgres_test || true
-          rm -f secrets/app_password.txt secrets/postgres_password.txt
+          rm -f secrets/app_password.txt secrets/postgres_password.txt secrets/api_password.txt

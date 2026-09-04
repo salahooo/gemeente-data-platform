@@ -1,5 +1,9 @@
 # CI/CD en repositorykwaliteit
 
+De quality-matrix bevat databasevrije FastAPI-contracttests. De geïsoleerde
+PostgreSQL-job bouwt het API-image zonder publicatie en test API-privileges
+alleen tegen `postgres_test` op 5434.
+
 ## Workflow
 
 ```mermaid

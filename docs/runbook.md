@@ -1,5 +1,10 @@
 # Runbook lokale PostgreSQL
 
+## Read-only API
+
+Start met `docker compose --profile api up -d api`; verifieer `/health` en
+`/ready` en stop alleen die service met `docker compose --profile api stop api`.
+
 Start de projectdatabase: `docker compose up -d postgres`. Stop zonder het
 volume te verwijderen: `docker compose stop postgres`. Gebruik nooit `down -v`.
 Controleer met `docker compose ps` en

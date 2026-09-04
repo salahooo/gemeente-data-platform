@@ -18,6 +18,8 @@ dependencies = [
     "python-dotenv",
     "alembic",
     "filelock",
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.30,<1",
 ]
 
 [project.optional-dependencies]
@@ -25,6 +27,7 @@ dev = [
     "pytest",
     "ruff",
     "pip-audit>=2.9,<3",
+    "httpx>=0.27,<1",
 ]
 
 [tool.setuptools.packages.find]
@@ -49,3 +52,7 @@ select = ["E", "F", "I"]
 "src/gemeente_data_platform/check_database.py" = ["E501"]
 "src/gemeente_data_platform/database_loader.py" = ["E501"]
 "tests/test_database_integration.py" = ["E501"]
+"src/gemeente_data_platform/api.py" = ["E501"]
+"src/gemeente_data_platform/api_repository.py" = ["E501"]
+"tests/test_api.py" = ["E501"]
+"tests/test_api_integration.py" = ["E501"]

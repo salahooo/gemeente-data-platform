@@ -1,5 +1,22 @@
 # Architectuur
 
+## Read-only analytics API (fase 7)
+
+FastAPI is een afzonderlijke container boven uitsluitend PostgreSQL `mart`-views.
+De service gebruikt `gemeente_api`; `core`, `ops`, raw en processed zijn geen
+API-bronnen. Dashboard en Power BI blijven toekomstig.
+
+```mermaid
+sequenceDiagram
+    participant Consumer
+    participant API as FastAPI
+    participant Mart as PostgreSQL mart
+    Consumer->>API: GET /api/v1/...
+    API->>Mart: parameterized SELECT as gemeente_api
+    Mart-->>API: analytical data
+    API-->>Consumer: typed JSON + request id
+```
+
 ## Doel en scope
 
 Het Gemeente Data Platform haalt openbare CBS-data gecontroleerd op. Fase 5
