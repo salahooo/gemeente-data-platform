@@ -1,5 +1,7 @@
 # Gemeente Data Platform
 
+[![CI](https://github.com/salahooo/gemeente-data-platform/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/salahooo/gemeente-data-platform/actions/workflows/ci.yml)
+
 Een portfolio-project voor functies rond data bij Nederlandse gemeenten en de overheid. Het project krijgt uiteindelijk een reproduceerbare dataketen voor gemeentelijke CBS-data.
 
 ## Huidige fase: betrouwbare end-to-end bevolkingspipeline
@@ -48,6 +50,7 @@ lineage naar `ops.etl_run`. Power BI blijft toekomstig.
 - [ADR-003: Parquet als canonieke processed opslag](docs/decisions/ADR-003-parquet-as-canonical-processed-storage.md)
 - [ADR-007: pipeline-orchestratie en lineage](docs/decisions/ADR-007-pipeline-orchestration-and-lineage.md)
 - [Pipeline-operations](docs/pipeline-operations.md)
+- [CI/CD en repositorykwaliteit](docs/ci-cd.md)
 
 ## Lokaal starten
 
@@ -65,6 +68,7 @@ py -3.14 -m gemeente_data_platform.run_pipeline --dry-run
 py -3.14 -m gemeente_data_platform.run_pipeline
 py -3.14 -m pytest
 py -3.14 -m ruff check .
+git diff --check
 ```
 
 De optie `--user` installeert pakketten voor het huidige Windows-gebruikersaccount,
@@ -104,3 +108,12 @@ alle vijf fasen uit tegen de lokale PostgreSQL 17 Docker-container op poort 5433
 Zie het [runbook](docs/runbook.md), [pipeline-operations](docs/pipeline-operations.md)
 en het [databaseontwerp](docs/database-design.md). PostgreSQL is bestaand;
 Power BI blijft toekomstig.
+
+## CI en tests
+
+GitHub Actions draait op pull requests, pushes naar `main` en handmatige starts.
+De quality-matrix gebruikt Python 3.11 en 3.14 en voert uitsluitend databasevrije
+tests uit. Pas daarna start de afzonderlijke PostgreSQL-integratiejob alleen
+`postgres_test` op `localhost:5434/gemeente_data_test`. CI start of wijzigt nooit
+de ontwikkelservice op 5433. Zie [CI/CD en repositorykwaliteit](docs/ci-cd.md)
+voor lokale reproductie, dependency-updates en probleemoplossing.

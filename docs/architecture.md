@@ -77,6 +77,20 @@ flowchart LR
 
 ## 4. Dynamisch gedrag
 
+### CI-validatie
+
+```mermaid
+flowchart LR
+    source[Push of pull request] --> quality[Quality matrix: Python 3.11 en 3.14]
+    quality --> database[postgres_test op localhost 5434]
+    database --> verified[CI-resultaat]
+```
+
+De CI-container is een afzonderlijke kwaliteitscomponent. De quality-matrix is
+databasevrij; de afhankelijke integratiejob start uitsluitend `postgres_test`
+zonder Compose-dependencies. De lokale ontwikkel-PostgreSQL op 5433 is geen
+CI-dependency en blijft buiten bereik.
+
 ### Sequence diagram: end-to-end pipeline
 
 ```mermaid

@@ -31,3 +31,13 @@ ontwikkeldatabase op 5433.
 
 De integratiesuite test ook rollback: bij een fout blijft de vorige core-snapshot
 zichtbaar en wordt een beperkte `failed`-registratie in `ops.etl_run` bewaard.
+
+## CI en troubleshooting
+
+CI draait de databasevrije tests op Python 3.11 en 3.14, gevolgd door dezelfde
+integratiesuite tegen uitsluitend `localhost:5434/gemeente_data_test`. De CI-job
+start expliciet alleen `postgres_test`; development op 5433 blijft buiten scope.
+Zie [CI/CD en repositorykwaliteit](ci-cd.md) voor de workflowvolgorde,
+dependency-lock, lokaal reproduceren en foutdiagnose. Gebruik bij een lokale
+integratiefout uitsluitend `docker compose logs postgres_test` en stop daarna
+alleen `postgres_test`.

@@ -52,6 +52,8 @@ met een openbare CBS-dataset, zonder gemeentelijke persoonsgegevens.
 - Raw data blijft onveranderd; publicatie gebeurt atomair na validatie.
 - Python 3.11+ is de minimale projectvereiste; operationele validatie gebruikt Python 3.14.
 - Broncodekwaliteit wordt gecontroleerd met pytest en Ruff.
+- CI toetst de ondersteunde Python-versies, dependency-integriteit en een
+  geïsoleerde PostgreSQL-integratie zonder de ontwikkelomgeving te raken.
 
 ## Huidige architectuur: fase 5
 
@@ -62,6 +64,10 @@ pipeline-to-ETL-lineage. De loader zet gevalideerde processed data transactionee
 om naar `core`; `mart`-views worden dynamisch met het processed manifest
 gereconcilieerd. Historische GM-codes worden niet geharmoniseerd. Power BI blijft
 toekomstig.
+
+GitHub Actions is een gerealiseerde kwaliteitscomponent: een databasevrije
+Python-matrix gaat vooraf aan een strikt geïsoleerde `postgres_test`-job. De
+dependency-resolutie is gelockt voor CI, terwijl `pyproject.toml` de bron blijft.
 
 ## Doelarchitectuur: toekomstig
 
@@ -85,4 +91,6 @@ presentatielaag. Deze uitbreidingen zijn toekomstig.
 | Fout bij wegschrijven | Tijdelijke map, herlezing, validatie en atomaire publicatie |
 | Onderbroken end-to-end run | Atomaire pipeline-state, artifactchecksums en resume |
 | Parallelle writer | Cross-platform projectlock |
+| CI raakt ontwikkeldata | Alleen expliciete `postgres_test` zonder dependencies |
+| Onverwachte dependencyversie | `uv.lock`, frozen installatie en pip-audit |
 | Scope groeit te snel | Fasen scheiden; Power BI en productiebeheer blijven toekomstig |
