@@ -154,11 +154,32 @@ Het relationele schema staat in het
 
 ## Huidige versus doelarchitectuur
 
-| Onderdeel | Huidig: fase 3 | Later: doelarchitectuur |
+| Onderdeel | Huidig: fase 4 | Later: doelarchitectuur |
 | --- | --- | --- |
 | Databron | CBS OData API, dataset `03759ned` | Uitbreidbare CBS-bronnen |
 | Ingestie | Gevalideerde raw extractie | Herhaalbare extracties voor meer datasets |
 | Verwerking | Raw naar drie processed tabellen | Aanvullende transformaties en regels |
-| Opslag | Lokale Parquet-, CSV- en JSON-runmappen | PostgreSQL met beheerde tabellen |
+| Opslag | Lokale processed runs en PostgreSQL 17 (`core`, `mart`, `ops`) | Beheerde productieopslag en herstelproces |
 | Presentatie | Niet aanwezig | Power BI-dashboard boven analysegegevens |
 | Kwaliteitscontrole | Contracten, reconciliatie, checksums, pytest en Ruff | Aanvullende laad- en rapportagecontroles |
+
+## Database-load en deployment
+
+```mermaid
+sequenceDiagram
+    participant P as Python loader
+    participant R as Processed Parquet
+    participant D as PostgreSQL 17
+    P->>R: valideer manifest en checksums
+    P->>D: start ops.etl_run
+    P->>D: laad core snapshot transactioneel
+    P->>D: valideer mart views en markeer success
+```
+
+```mermaid
+flowchart LR
+    host[Windows-host: Python 3.14] --> docker[Docker Desktop]
+    docker --> postgres[PostgreSQL 17 container: bestaand]
+    postgres --> volume[Project named volume]
+    postgres -. toekomstig .-> bi[Power BI]
+```

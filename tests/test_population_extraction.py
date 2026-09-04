@@ -45,9 +45,7 @@ def dimensions() -> dict[str, list[dict[str, Any]]]:
             {"Key": "3000   ", "Title": "Mannen"},
         ],
         "age": [{"Key": "10000", "Title": "Totaal"}],
-        "marital_status": [
-            {"Key": "T001019", "Title": "Totaal burgerlijke staat"}
-        ],
+        "marital_status": [{"Key": "T001019", "Title": "Totaal burgerlijke staat"}],
         "regions": [
             {"Key": "GM0001", "Title": "Voorbeeldgemeente"},
             {"Key": "GM0002", "Title": "Tweede gemeente"},
@@ -198,9 +196,7 @@ def test_atomic_json_write_and_checksum(tmp_path: Path) -> None:
     write_json_atomically({"Titel": "Gemeenten"}, output_path)
 
     checksum = sha256_file(output_path)
-    assert json.loads(output_path.read_text(encoding="utf-8")) == {
-        "Titel": "Gemeenten"
-    }
+    assert json.loads(output_path.read_text(encoding="utf-8")) == {"Titel": "Gemeenten"}
     assert not list(output_path.parent.glob("*.tmp"))
     assert verify_checksums(output_path.parent, {output_path.name: checksum})
 
@@ -283,9 +279,12 @@ def test_full_extract_run_writes_manifest_and_unmodified_records(
     assert stored_records["value"] == population_records
     assert manifest["validation_status"]["checksums_reverified"] is True
     assert manifest["schema_version"] == "2.0"
-    assert manifest["quality"]["period_statistics"]["2020JJ00"][
-        "active_municipality_count"
-    ] == 2
+    assert (
+        manifest["quality"]["period_statistics"]["2020JJ00"][
+            "active_municipality_count"
+        ]
+        == 2
+    )
     assert manifest["quality"] == quality_report
     assert "quality_report.json" in manifest["checksums_sha256"]
     assert verify_checksums(summary.output_directory, manifest["checksums_sha256"])
@@ -333,9 +332,10 @@ def test_quality_report_warns_when_average_population_is_fully_missing(
 
     report = build_quality_report(records, ["2020JJ00"])
 
-    assert report["period_statistics"]["2020JJ00"][
-        "available_average_population_count"
-    ] == 0
+    assert (
+        report["period_statistics"]["2020JJ00"]["available_average_population_count"]
+        == 0
+    )
     assert report["warnings"]
 
 

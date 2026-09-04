@@ -1,5 +1,7 @@
 # Environment variables and secrets
 .env
+secrets/*.txt
+!secrets/*.txt.example
 
 # Python bytecode and caches
 __pycache__/

@@ -1,0 +1,68 @@
+name: gemeente-data-platform
+
+services:
+  postgres:
+    image: postgres:17.11-bookworm
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    environment:
+      POSTGRES_DB: gemeente_data
+      POSTGRES_USER: gemeente_bootstrap
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C.UTF-8
+    secrets:
+      - postgres_password
+      - app_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gemeente_bootstrap -d gemeente_data"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+    shm_size: 128mb
+    labels:
+      com.gemeente-data-platform.component: postgres
+      com.gemeente-data-platform.managed: "true"
+
+  postgres_test:
+    profiles: ["test"]
+    image: postgres:17.11-bookworm
+    ports:
+      - "${POSTGRES_TEST_PORT:-5434}:5432"
+    environment:
+      POSTGRES_DB: gemeente_data_test
+      POSTGRES_USER: gemeente_bootstrap
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C.UTF-8
+    secrets:
+      - postgres_password
+      - app_password
+    volumes:
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gemeente_bootstrap -d gemeente_data_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    labels:
+      com.gemeente-data-platform.component: postgres-test
+      com.gemeente-data-platform.managed: "true"
+
+volumes:
+  postgres_data:
+    labels:
+      com.gemeente-data-platform.component: postgres-data
+      com.gemeente-data-platform.managed: "true"
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  app_password:
+    file: ./secrets/app_password.txt

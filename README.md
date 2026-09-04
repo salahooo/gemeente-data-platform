@@ -90,3 +90,12 @@ De map bevat Parquet- en CSV-versies van de drie tabellen, `quality_report.json`
 en `manifest.json`. Generated data wordt niet door Git gevolgd. Zie het
 [processed-datacontract](docs/processed-data-contract.md) voor schema's,
 selectieregels en validaties.
+
+## PostgreSQL-laag
+
+Fase 4 laadt een gevalideerde processed snapshot in een lokale PostgreSQL 17
+Docker-container op poort 5433. Start met `docker compose up -d postgres`, voer
+`py -3.14 -m alembic upgrade head` uit en laad met
+`py -3.14 -m gemeente_data_platform.load_database`. PostgreSQL is bestaand;
+Power BI blijft toekomstig. Zie het [runbook](docs/runbook.md) en het
+[databaseontwerp](docs/database-design.md).

@@ -60,6 +60,14 @@ volledige geldige raw run of een expliciete run, valideert de inhoud en bouwt
 `dim_municipality`, `dim_period` en `fact_population`. Historische GM-codes
 worden niet geharmoniseerd. PostgreSQL, SQL-views en Power BI bestaan nog niet.
 
+## Huidige architectuur: fase 4
+
+PostgreSQL 17 is nu een gerealiseerde data-architectuurcomponent. De Python
+loader zet gevalideerde processed Parquet-data transactioneel om naar `core`,
+analytische views staan in `mart` en auditbare runs in `ops`. `gemeente_app`
+heeft least-privilege rechten; secrets staan lokaal buiten Git. Power BI blijft
+toekomstig.
+
 ## Doelarchitectuur: toekomstig
 
 De beoogde keten is CBS OData API naar Python-verwerking, vervolgens PostgreSQL
@@ -69,9 +77,8 @@ onderdelen en geen fase-3-functionaliteit.
 ## Belangrijkste tussenstappen
 
 1. Processed-datacontract en raw-herleidbaarheid stabiel houden.
-2. PostgreSQL-laag en herhaalbare laadstap ontwerpen en toevoegen.
-3. SQL-views voor analyse ontwikkelen.
-4. Power BI-rapportage boven de analysegegevens ontwikkelen.
+2. Beschikbaarheid, backup en herstel voor productie ontwerpen.
+3. Power BI-rapportage boven de analysegegevens ontwikkelen.
 
 ## Risico's en beheersmaatregelen
 
