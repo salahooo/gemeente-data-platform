@@ -57,6 +57,12 @@ postgres_test` veilig om te bekijken, zolang secretinhoud niet wordt gekopieerd.
 
 ## Dependencies en supply chain
 
+Dependabot groepeert npm patch- en minorupdates. Major-upgrades worden bewust
+als afzonderlijk onderhoudswerk beoordeeld: compatibiliteit, release notes en
+groene CI zijn vereist vóór een merge. Deze policy beperkt reguliere version
+update-PR's; GitHub Security Advisories blijven een afzonderlijk kanaal en
+worden niet door deze ignore-regel uitgeschakeld.
+
 `pyproject.toml` blijft de functionele bron voor runtime- en development
 dependencies. `uv.lock` is daarvan de gegenereerde, gecontroleerde resolutie
 voor CI op Python 3.11 en 3.14. CI installeert exact die lock met
