@@ -52,13 +52,19 @@ verwerken.
 - Python 3.11+ als minimale projectvereiste; validatie met Python 3.14.
 - Broncodekwaliteit gecontroleerd met pytest en Ruff.
 
-## Huidige architectuur: fase 2A
+## Huidige architectuur: fase 2B
 
-Fase 2A bestaat uit een configuratiemodule, metadata-runner en herbruikbare
-CBS API-client. De runner haalt `TableInfos` op en schrijft het resultaat naar
-een lokaal raw JSON-bestand. PostgreSQL, SQL-modellen en Power BI bestaan nog
-niet in de implementatie. Dit is de bestaande situatie die in de C4-weergaven
-met **bestaand** of **extern** is aangeduid.
+Fase 2B bestaat uit configuratie, een herbruikbare CBS API-client,
+dimensieontdekking, contractvalidatie, atomaire raw opslag en een
+extractie-opdracht. De applicatie haalt `TableInfos`, dimensies en een gerichte
+set gemeentelijke `TypedDataSet`-records op vanaf 2020. Per run worden JSON,
+een kwaliteitsrapport, checksums en een manifest in een UTC-runmap opgeslagen.
+Historische GM-codes blijven raw behouden; actieve gemeentewaarnemingen zijn een
+projectspecificieke afleiding uit geldige januari-populaties en ontbrekend is
+niet nul. PostgreSQL,
+SQL-transformaties en Power BI bestaan nog niet in de implementatie. Dit is de
+bestaande situatie die in de C4-weergaven met **bestaand** of **extern** is
+aangeduid.
 
 ## Doelarchitectuur: toekomstig
 
@@ -69,8 +75,8 @@ toekomstig en vallen buiten fase 2A. In de C4-weergaven zijn zij als
 
 ## Belangrijkste tussenstappen
 
-1. Metadata-ophaling stabiel houden en bronstructuur begrijpen.
-2. Een beperkte extractie en validatie van feitelijke brondata ontwerpen.
+1. Dimensieontdekking en raw extractie stabiel houden en bronstructuur bewaken.
+2. Een beperkte transformatielaag en aanvullende datavalidatie ontwerpen.
 3. Een PostgreSQL-laag en herhaalbare laadstap toevoegen.
 4. SQL-views en Power BI-rapportage ontwikkelen.
 
@@ -82,4 +88,4 @@ toekomstig en vallen buiten fase 2A. In de C4-weergaven zijn zij als
 | API retourneert een foutstatus | `raise_for_status()` en een duidelijke `CbsHttpError` |
 | API-response is geen geldige JSON | Expliciete JSON-validatie en `CbsInvalidJsonError` |
 | Bronstructuur wijzigt | Metadata lokaal vastleggen en toekomstige validatieregels toevoegen |
-| Scope groeit te snel | Fasen scheiden; alleen metadata-ophaling is nu geïmplementeerd |
+| Scope groeit te snel | Fasen scheiden; alleen raw extractie is nu geïmplementeerd |

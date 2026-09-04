@@ -2,21 +2,18 @@
 
 ## Doel en scope
 
-Het Gemeente Data Platform automatiseert het ophalen van openbare CBS-data. In
-latere fasen worden gegevens getransformeerd, in PostgreSQL opgeslagen en voor
-analyse beschikbaar gemaakt in Power BI.
+Het Gemeente Data Platform haalt openbare CBS-data gecontroleerd op. In latere
+fasen worden gegevens getransformeerd, in PostgreSQL opgeslagen en beschikbaar
+gemaakt voor analyse in Power BI.
 
-De huidige implementatie is **fase 2A: metadata-ophaling**. De applicatie haalt
-alleen `TableInfos`-metadata op uit CBS-dataset `03759ned` en schrijft die als
-UTF-8-JSON naar `data/raw/03759ned_table_info.json`. Er worden nog geen
-feitelijke bevolkingsgegevens verwerkt of opgeslagen.
+De huidige implementatie is **fase 2B: dimensieontdekking en raw extractie**.
+De applicatie ontdekt en valideert de dimensies van CBS-dataset `03759ned` en
+schrijft ongetransformeerde gemeentelijke bevolkingsrecords met manifest naar
+een unieke UTC-runmap. Transformatie, PostgreSQL en Power BI zijn toekomstig.
 
 ## 1. Systeemcontext
 
 ### C4 niveau 1 — Systeemcontext
-
-Het Gemeente Data Platform is hier één systeem. CBS en Power BI zijn externe
-systemen; Power BI is bovendien toekomstig.
 
 ```mermaid
 flowchart LR
@@ -29,77 +26,88 @@ flowchart LR
 
 ### C4 niveau 2 — Containerdiagram
 
-Dit niveau toont alleen zelfstandig uitvoerbare applicaties of opslaglocaties,
-niet de interne Python-modules.
-
 ```mermaid
 flowchart LR
     etl[Python ETL-applicatie - bestaand] --> cbs[CBS OData API - extern]
-    etl --> raw[Lokaal raw JSON-bestand - bestaand en tijdelijke opslag]
+    etl --> raw[Raw JSON landing zone - bestaand en tijdelijke opslag]
     raw -. toekomstig .-> postgres[PostgreSQL-database - toekomstig]
-    postgres -. toekomstig .-> powerbi[Power BI - toekomstig]
+    postgres -. toekomstig .-> powerbi[Power BI - toekomstig en extern]
 ```
 
-De bestaande Python ETL-applicatie voert in fase 2A alleen metadata-ophaling
-uit. Het lokale raw JSON-bestand is tijdelijke opslag; PostgreSQL en Power BI
-zijn nog niet geïmplementeerd.
+De bestaande Python-applicatie voert in fase 2B metadata- en dimensieophaling
+uit. De raw landing zone bewaart één reproduceerbare run per UTC-run-id.
 
 ## 3. Componenten van de Python-applicatie
 
 ### C4 niveau 3 — Componentdiagram
 
-Dit niveau toont uitsluitend de interne componenten van de Python-applicatie.
-De CBS OData API en het lokale raw JSON-bestand staan visueel buiten de
-applicatie.
-
 ```mermaid
 flowchart LR
     subgraph app[Python ETL-applicatie - bestaand]
         config[config.py - bestaand]
-        runner[fetch_metadata.py - bestaand]
+        metadata[fetch_metadata.py - bestaand]
+        command[extract_population.py - bestaand]
+        extraction[population_extraction.py - bestaand]
         client[cbs_client.py - bestaand]
-        extract[Extractielaag - toekomstig]
+        contracts[data_contracts.py - bestaand]
+        quality[quality.py - bestaand]
+        storage[raw_storage.py - bestaand]
         transform[Transformatielaag - toekomstig]
         database[Databaselaag - toekomstig]
     end
 
     cbs[CBS OData API - extern]
-    raw[Lokaal raw JSON-bestand - bestaand en tijdelijke opslag]
+    raw[Raw JSON landing zone - bestaand]
     postgres[PostgreSQL-database - toekomstig]
 
-    config --> runner
-    runner --> client
+    config --> metadata
+    config --> command
+    metadata --> client
+    metadata --> storage
+    command --> extraction
+    extraction --> client
+    extraction --> contracts
+    extraction --> quality
+    extraction --> storage
     client --> cbs
-    runner --> raw
-    raw -. toekomstig .-> extract
-    extract -. toekomstig .-> transform
+    storage --> raw
+    raw -. toekomstig .-> transform
     transform -. toekomstig .-> database
     database -. toekomstig .-> postgres
 ```
 
 ## 4. Dynamisch gedrag
 
-### Sequence diagram: metadata-ophaling
+### Sequence diagram: volledige extractierun
 
 ```mermaid
 sequenceDiagram
     participant U as Gebruiker - extern
-    participant R as Metadata-runner - bestaand
-    participant S as Configuratiemodule - bestaand
-    participant C as CBS API-client - bestaand
-    participant A as CBS OData API - extern
-    participant F as Raw JSON-bestand - bestaand
+    participant R as Extractierunner - bestaand
+    participant C as Configuratie - bestaand
+    participant A as CBS API-client - bestaand
+    participant O as CBS OData API - extern
+    participant V as Validators - bestaand
+    participant S as Raw opslag - bestaand
 
-    U->>R: Start fetch_metadata
-    R->>S: Lees basis-URL, datasetcode en timeout
-    S-->>R: Instellingen
-    R->>C: get_table_info()
-    C->>A: HTTP GET /03759ned/TableInfos
-    A-->>C: JSON-response
-    C->>C: Valideer HTTP-status en JSON
-    C-->>R: Metadata-object
-    R->>F: Schrijf UTF-8 JSON met inspringing
+    U->>R: Start extract_population
+    R->>C: Lees instellingen
+    R->>A: Haal TableInfos en dimensies op
+    A->>O: HTTP GET collectie-endpoints
+    O-->>A: JSON-responses
+    R->>V: Ontdek en valideer totalen, perioden en gemeenten
+    R->>A: Vraag gefilterde TypedDataSet op
+    A->>O: HTTP GET met OData-filter
+    O-->>A: Gemeentelijke raw records
+    R->>V: Valideer records en uniciteit
+    R->>V: Bereken actieve waarnemingen en ontbrekende waarden
+    R->>S: Schrijf raw JSON, quality report, checksums en manifest
+    S-->>R: Gevalideerde UTC-runmap
 ```
+
+Een netwerkprobleem, tijdelijke serverfout, HTTP-fout, ongeldige JSON,
+paginering buiten de limiet of gebroken datacontract stopt de run met een
+duidelijke fout. Er wordt geen gedeeltelijk JSON-bestand gepubliceerd.
 
 ### Legenda
 
@@ -107,30 +115,30 @@ sequenceDiagram
 - **Toekomstig:** gepland, nog niet geïmplementeerd.
 - **Extern:** systeem buiten onze verantwoordelijkheid.
 
-Bij een netwerkprobleem, HTTP-fout of ongeldige JSON gooit de CBS API-client
-respectievelijk een `CbsNetworkError`, `CbsHttpError` of `CbsInvalidJsonError`.
-De runner onderdrukt deze fouten niet; er wordt dan geen geslaagde metadata-run
-gemeld.
-
 ## Architectuurprincipes
 
-- Verantwoordelijkheden zijn gescheiden tussen configuratie, ophalen en opslag.
+- Verantwoordelijkheden zijn gescheiden tussen configuratie, ophalen,
+  validatie en raw opslag.
 - Configuratie staat buiten de bedrijfslogica.
-- Een herbruikbare externe API-client bundelt HTTP-afspraken.
+- Een herbruikbare CBS-client bundelt headers, timeout, retries en paginering.
 - Tests kunnen zonder echte netwerkverbinding worden uitgevoerd.
-- Raw data blijft inhoudelijk onveranderd; metadata wordt alleen als JSON
-  opgeslagen.
+- Raw CBS-records worden niet hernoemd, geaggregeerd of inhoudelijk
+  getransformeerd.
+- Atomaire writes, manifesten en checksums maken runs controleerbaar.
+- Historische GM-codes blijven raw behouden; activiteit is een afgeleide
+  kwaliteitseigenschap op basis van januari-populatie.
+- Ontbrekende CBS-waarden zijn niet nul en blijven zichtbaar in kwaliteitsrapportage.
 - Secrets en gegenereerde data worden niet gecommit.
 - Documentatie verandert mee met de implementatie.
 - Een toekomstige component wordt nooit als bestaand gepresenteerd.
 
 ## Huidige versus doelarchitectuur
 
-| Onderdeel | Huidig: fase 2A | Later: doelarchitectuur |
+| Onderdeel | Huidig: fase 2B | Later: doelarchitectuur |
 | --- | --- | --- |
-| Databron | CBS OData API, dataset `03759ned`, endpoint `TableInfos` | CBS-data voor geselecteerde bevolkingsgegevens |
-| Ingestie | Python metadata-runner met `requests.Session` | Herhaalbare extractieruns voor brongegevens |
-| Verwerking | Geen datatransformatie | Python-transformatielaag en validatieregels |
-| Opslag | Lokaal JSON-bestand in `data/raw/` | PostgreSQL met beheerde tabellen |
+| Databron | CBS OData API, dataset `03759ned` | CBS-data voor geselecteerde bevolkingsgegevens |
+| Ingestie | Dimensieontdekking en OData-filtered raw extractie | Herhaalbare bronextracties voor meerdere datasets |
+| Verwerking | Contractvalidatie en afgeleide kwaliteitsrapportage zonder transformatie | Python-transformatielaag en validatieregels |
+| Opslag | UTC-runmappen met JSON, quality report, checksums en manifest | PostgreSQL met beheerde tabellen |
 | Presentatie | Niet aanwezig | Power BI-dashboard boven op analysegegevens |
-| Kwaliteitscontrole | HTTP-status, JSON-validatie, pytest en Ruff | Aanvullende data-, laad- en rapportagecontroles |
+| Kwaliteitscontrole | HTTP, JSON, paginering, datacontracten, pytest en Ruff | Aanvullende laad- en rapportagecontroles |

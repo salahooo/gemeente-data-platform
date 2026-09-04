@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     cbs_base_url: str = "https://opendata.cbs.nl/ODataApi/OData"
     cbs_dataset_code: str = "03759ned"
     cbs_request_timeout: float = 30.0
+    cbs_max_retries: int = 2
+    cbs_retry_backoff_seconds: float = 0.5
+    cbs_max_pages: int = 100
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
