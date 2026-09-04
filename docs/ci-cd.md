@@ -33,6 +33,11 @@ testdatabase zijn gevalideerd. Een rode workflow betekent dat de falende job en
 stap in GitHub Actions de eerste diagnosebron zijn; herhaal vervolgens lokaal de
 bijbehorende opdracht hieronder.
 
+De workflow valideert daarnaast `render.yaml`, voert production-configuratietests
+uit en bouwt het dashboard met een synthetische HTTPS API-origin. Daarna wordt
+de bundle gescand op localhost en credential-achtige waarden. CI deployt nooit
+en verbindt nooit met een cloud-database of CBS.
+
 ## Lokaal reproduceren
 
 Gebruik PowerShell en Python 3.14 zonder virtual environment:

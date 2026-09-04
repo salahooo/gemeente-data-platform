@@ -27,8 +27,14 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
         working-directory: frontend
-      - run: npm run lint && npm run test && npm run build && npm audit --omit=dev
+      - name: Validate frontend with a synthetic public API origin
+        env:
+          VITE_API_BASE_URL: https://api.example.invalid
+        run: npm run lint && npm run test && npm run build && npm audit --omit=dev
         working-directory: frontend
+      - name: Reject local addresses and credential-shaped values in the production bundle
+        run: |
+          ! grep -RIE "localhost|127\.0\.0\.1|postgres(ql)?://[^[:space:]]+:[^[:space:]@]+@|password=|secret=" frontend/dist
       - run: docker compose --profile dashboard build dashboard
 
   quality:
@@ -59,6 +65,9 @@ jobs:
         run: uv run pytest -m "not integration"
       - name: Check repository whitespace
         run: git diff --check
+      - name: Validate Render Blueprint YAML
+        run: |
+          uv run python -c "import yaml; data=yaml.safe_load(open('render.yaml', encoding='utf-8')); assert len(data['services']) == 2; print('render.yaml valid')"
       - name: Audit resolved dependencies
         if: matrix.python-version == '3.14'
         shell: bash

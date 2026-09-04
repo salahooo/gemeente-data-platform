@@ -14,8 +14,10 @@ from sqlalchemy import URL, create_engine, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.exc import IntegrityError
 
+from gemeente_data_platform.config import Settings
 from gemeente_data_platform.database_loader import ProcessedRun, load_snapshot
 from gemeente_data_platform.database_validator import validate_database_snapshot
+from gemeente_data_platform.deploy_database import preflight_database
 from gemeente_data_platform.raw_storage import sha256_file
 
 pytestmark = pytest.mark.integration
@@ -318,6 +320,22 @@ def test_privileges_are_least_privilege(engine):
             ).scalar_one()
             is False
         )
+
+
+def test_cloud_preflight_is_idempotent_when_local_prerequisites_exist(engine):
+    settings = Settings(
+        database_host="localhost",
+        database_port=5434,
+        database_name="gemeente_data_test",
+        database_user="gemeente_bootstrap",
+        database_password_file=Path("secrets/postgres_password.txt"),
+    )
+    bootstrap_engine = create_engine(settings.database_url())
+    try:
+        preflight_database(bootstrap_engine, settings, create_roles=False)
+        preflight_database(bootstrap_engine, settings, create_roles=False)
+    finally:
+        bootstrap_engine.dispose()
 
 
 def test_loader_rollback_preserves_previous_snapshot_and_records_failure(

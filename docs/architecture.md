@@ -98,6 +98,18 @@ flowchart LR
 
 ## 4. Dynamisch gedrag
 
+### Voorbereide publieke deployment
+
+```mermaid
+flowchart LR
+    visitor[Bezoeker] --> static[Render Static Site]
+    static --> api[Render FastAPI Web Service]
+    api --> managed[Managed PostgreSQL met SSL]
+```
+
+Deze deployment is voorbereid maar niet actief. Databasebootstrap en CBS-pipeline
+zijn afzonderlijke operatoracties; een webdeploy voert geen datamutatie uit.
+
 ### CI-validatie
 
 ```mermaid

@@ -332,6 +332,7 @@ dev = [
     { name = "httpx" },
     { name = "pip-audit" },
     { name = "pytest" },
+    { name = "pyyaml" },
     { name = "ruff" },
 ]
 
@@ -348,6 +349,7 @@ requires-dist = [
     { name = "pydantic-settings" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "python-dotenv" },
+    { name = "pyyaml", marker = "extra == 'dev'", specifier = ">=6,<7" },
     { name = "requests" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "sqlalchemy" },

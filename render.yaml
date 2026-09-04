@@ -1,0 +1,37 @@
+version: "1"
+previews:
+  generation: "off"
+services:
+  - type: web
+    name: gemeente-data-platform-api
+    runtime: docker
+    plan: free
+    branch: main
+    autoDeployTrigger: checksPass
+    dockerfilePath: ./Dockerfile.api
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: PORT
+        value: "8000"
+      - key: DATABASE_URL
+        sync: false
+      - key: API_ALLOWED_ORIGINS
+        sync: false
+  - type: web
+    name: gemeente-data-platform-dashboard
+    runtime: static
+    plan: free
+    branch: main
+    autoDeployTrigger: checksPass
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

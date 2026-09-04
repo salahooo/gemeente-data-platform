@@ -58,11 +58,7 @@ def create_app(
         description="Read-only analytics API over validated municipal mart views.",
         lifespan=lifespan,
     )
-    origins = [
-        origin.strip()
-        for origin in active_settings.api_allowed_origins.split(",")
-        if origin.strip()
-    ]
+    origins = active_settings.allowed_origins()
     if origins:
         app.add_middleware(
             CORSMiddleware,
