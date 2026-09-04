@@ -1,127 +1,77 @@
 # Gemeente Data Platform
 
-De read-only FastAPI analytics API is beschikbaar op `localhost:8000` via het
-Compose-profiel `api`; zie [API-documentatie](docs/api.md). Zij leest uitsluitend
-`mart`-views met de aparte loginrol `gemeente_api`.
+[![CI](https://github.com/salahooo/gemeente-data-platform/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/salahooo/gemeente-data-platform/actions/workflows/ci.yml) ![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.14-3776AB) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1) ![React](https://img.shields.io/badge/React-TypeScript-61DAFB)
 
-Het responsieve dashboard draait op `localhost:3000` met
-`docker compose --profile dashboard up -d dashboard`; zie
-[dashboardgebruik](docs/dashboard.md).
+Een controleerbaar data-platform voor gemeentelijke bevolkingsinformatie: van officiële CBS OData-records tot een responsive, read-only dashboard. Publieke deployment is in voorbereiding; er is nog geen live URL.
 
-[![CI](https://github.com/salahooo/gemeente-data-platform/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/salahooo/gemeente-data-platform/actions/workflows/ci.yml)
+![Dashboard met echte, lokaal gevalideerde API-data](docs/images/dashboard-desktop.png)
 
-Een portfolio-project voor functies rond data bij Nederlandse gemeenten en de overheid. Het project krijgt uiteindelijk een reproduceerbare dataketen voor gemeentelijke CBS-data.
+[Dashboard bekijken](docs/dashboard.md) · [API-documentatie](docs/api.md) · [Portfolio-walkthrough](docs/portfolio-walkthrough.md)
 
-## Huidige fase: betrouwbare end-to-end bevolkingspipeline
+## Waarom dit project?
 
-De professionele Python-projectbasis ontdekt dimensies, haalt ongetransformeerde
-bevolkingsrecords voor gemeentecodes op uit de CBS Open Data API voor dataset
-`03759ned` en bouwt daaruit een reproduceerbare processed laag. De raw extractie
-valideert dimensiecodes, perioden en records voordat CBS-responses in een unieke
-UTC-runmap onder `data/raw/cbs/03759ned/` worden opgeslagen. De transformatie
-gebruikt daarna uitsluitend zo'n lokaal gevalideerde raw run.
+Open overheidsdata is pas bruikbaar wanneer herkomst, kwaliteit en interpretatie zichtbaar blijven. Dit platform haalt CBS OData-data op, valideert en bewaart immutable raw runs, transformeert naar processed Parquet/CSV, laadt PostgreSQL-marts transactioneel en biedt die veilig aan via FastAPI en React.
 
-- Python 3.11+-project met een `src`-layout;
-- centrale, omgevingsvariabele-gebaseerde configuratie;
-- basisstructuur voor data, SQL, notebooks en documentatie;
-- een minimale uitvoerbare applicatie, rooktest en codekwaliteitsconfiguratie;
-- een CBS-client met timeout, retries en begrensde paginering;
-- dimensieontdekking en gerichte, raw extractie voor perioden vanaf 2020;
-- atomaire JSON-opslag, checksums en een manifest per extractierun.
-- drie gevalideerde processed tabellen: `dim_municipality`, `dim_period` en
-  `fact_population`;
-- Parquet als technische bron en UTF-8-CSV als leesbare export, met een manifest,
-  checksums, kwaliteitsrapport en atomaire publicatie per processed run.
-
-Historische gemeentecodes worden niet geharmoniseerd of samengevoegd. Een actieve
-gemeentewaarneming is in dit project een gemeente-jaarrecord
-met een geldige numerieke bevolking op 1 januari; ontbrekend is niet nul.
-Fase 5 orkestreert CBS-extractie, raw-validatie, processed-transformatie,
-Alembic, transactionele PostgreSQL-snapshot-load en databasevalidatie als één
-herstelbare run. Elke pipeline-run heeft een getypeerd manifest, JSONL-log en
-lineage naar `ops.etl_run`. Power BI blijft toekomstig.
-
-## Geplande vervolgfases
-
-1. Productie-geschikte scheduling, backup en herstel ontwerpen.
-2. Dashboards ontwikkelen in Power BI.
-
-## Architectuur
-
-- [Architectuuroverzicht](docs/architecture.md)
-- [TOGAF-light architectuurbeschrijving](docs/togaf-alignment.md)
-- [CBS-datacontract](docs/data-contract.md)
-- [Processed-datacontract](docs/processed-data-contract.md)
-- [ADR-register](docs/decisions/README.md)
-- [ADR-001: afzonderlijke herbruikbare CBS OData-client](docs/decisions/ADR-001-cbs-odata-client.md)
-- [ADR-002: historische gemeentecodes behouden](docs/decisions/ADR-002-historical-municipality-codes.md)
-- [ADR-003: Parquet als canonieke processed opslag](docs/decisions/ADR-003-parquet-as-canonical-processed-storage.md)
-- [ADR-007: pipeline-orchestratie en lineage](docs/decisions/ADR-007-pipeline-orchestration-and-lineage.md)
-- [Pipeline-operations](docs/pipeline-operations.md)
-- [CI/CD en repositorykwaliteit](docs/ci-cd.md)
-
-## Lokaal starten
-
-Minimale projectvereiste: Python 3.11 of nieuwer. Onderstaande opdrachten gebruiken
-expliciet Python 3.14 op Windows PowerShell.
-
-```powershell
-py -3.14 -m pip install --user --upgrade pip
-py -3.14 -m pip install --user -e ".[dev]"
-py -3.14 -m gemeente_data_platform.main
-py -3.14 -m gemeente_data_platform.fetch_metadata
-py -3.14 -m gemeente_data_platform.extract_population
-py -3.14 -m gemeente_data_platform.transform_population
-py -3.14 -m gemeente_data_platform.run_pipeline --dry-run
-py -3.14 -m gemeente_data_platform.run_pipeline
-py -3.14 -m pytest
-py -3.14 -m ruff check .
-git diff --check
+```mermaid
+flowchart LR
+  CBS[CBS OData] --> RAW[Raw: manifest + checksums] --> PROC[Processed: Parquet/CSV]
+  PROC --> DB[PostgreSQL core + mart] --> API[FastAPI read-only] --> UI[React dashboard]
+  ORCH[Pipeline state machine] -. lineage .-> RAW
+  CI[Tests + GitHub Actions] -. quality .-> API
 ```
 
-De optie `--user` installeert pakketten voor het huidige Windows-gebruikersaccount,
-zonder een virtual environment aan te maken.
+## Aantoonbare resultaten
 
-Kopieer eventueel `.env.example` naar `.env` en vervang uitsluitend de voorbeeldwaarden door lokale instellingen. Het bestand `.env` wordt niet door Git gevolgd.
+| Resultaat | Stand |
+| --- | --- |
+| Gemeentecodes in dimensie | 360, inclusief historische codes |
+| Perioden en feiten | 7 perioden (2020–2026), 2.420 gemeente-jaarfeiten |
+| Actieve gemeenten in 2026 | 342 |
+| Ontbrekende waarde | Gemiddelde bevolking 2026 blijft `null`, nooit nul |
+| Kwaliteit | Python 3.11/3.14, unit-, 5434-integratie- en browser-E2E-tests |
 
-## Raw landing zone
+Historische codes blijven voor herleidbare tijdreeksen in de dimensie en zijn niet allemaal actief in 2026. Woonplaatsen zoals Benthuizen en Ter Aar zijn geen zelfstandige gemeenten en hebben daarom geen gemeentecode.
 
-Elke metadata- of extractierun schrijft naar een unieke UTC-runmap:
-`data/raw/cbs/03759ned/<utc-run-id>/`. De volledige bevolkingsrun bevat de
-opgehaalde metadata, dimensies, `population_records.json`, `quality_report.json`
-en `manifest.json`.
-Zie het [CBS-datacontract](docs/data-contract.md) voor de bestandsstructuur,
-validaties en de grens tussen raw extractie en transformatie. De processed-laag
-modelleert alleen bruikbare gemeente-jaarwaarnemingen.
+## Technologie
 
-## Processed laag
+| Onderdeel | Keuze |
+| --- | --- |
+| Ingestion/transformatie | Python, CBS OData, datacontracten, Parquet/CSV |
+| Database | PostgreSQL 17, Alembic, `core`/`mart`/`ops` |
+| API/frontend | FastAPI least-privilege, React, TypeScript, Vite |
+| Infra/kwaliteit | Docker Compose, Nginx, pytest, Vitest, Playwright, GitHub Actions |
+| Architectuur | C4, ERD, lineage, TOGAF-light, ADRs |
 
-De transformatie selecteert standaard de nieuwste volledig geldige raw run. Kies
-eventueel reproduceerbaar een specifieke run met `--raw-run`:
+## Mijn bijdrage
+
+Dit portfolio-project demonstreert end-to-end data-engineering: Python en SQL, datacontracten en kwaliteitsvalidatie, idempotente transactionele loads, PostgreSQL-modellering, FastAPI-security, React/TypeScript, Docker Compose, unit-/integratie-/E2E-tests en GitHub Actions. De trade-offs staan in de C4-, ERD- en lineageweergaven, TOGAF-light en ADRs.
+
+## Snel starten (Windows PowerShell)
+
+Vereist: Git, Docker Desktop en Python 3.14. Node/npm is alleen nodig voor frontendontwikkeling buiten Docker.
 
 ```powershell
-py -3.14 -m gemeente_data_platform.transform_population --raw-run 20260904T004750415349Z
+git clone https://github.com/salahooo/gemeente-data-platform.git
+cd gemeente-data-platform
+Copy-Item secrets/postgres_password.txt.example secrets/postgres_password.txt
+Copy-Item secrets/app_password.txt.example secrets/app_password.txt
+Copy-Item secrets/api_password.txt.example secrets/api_password.txt
+# Vul ieder lokaal secretbestand met een eigen sterk wachtwoord; commit ze nooit.
+docker compose --profile dashboard up -d --build
+Start-Process http://localhost:3000
+Start-Process http://localhost:8000/docs
 ```
 
-Elke processed run komt onder `data/processed/cbs/03759ned/<utc-run-id>/` terecht.
-De map bevat Parquet- en CSV-versies van de drie tabellen, `quality_report.json`
-en `manifest.json`. Generated data wordt niet door Git gevolgd. Zie het
-[processed-datacontract](docs/processed-data-contract.md) voor schema's,
-selectieregels en validaties.
+Stop zonder volumes te verwijderen: `docker compose --profile dashboard stop dashboard api` en `docker compose stop postgres`. Voor losse ontwikkeling: start PostgreSQL/API zoals hierboven en voer in `frontend/` `npm ci; npm run dev` uit. Alleen voor nieuwe brondata is `py -3.14 -m gemeente_data_platform.run_pipeline` nodig.
 
-## PostgreSQL en end-to-end pipeline
+## Documentatie
 
-De standaardopdracht `py -3.14 -m gemeente_data_platform.run_pipeline` voert
-alle vijf fasen uit tegen de lokale PostgreSQL 17 Docker-container op poort 5433.
-Zie het [runbook](docs/runbook.md), [pipeline-operations](docs/pipeline-operations.md)
-en het [databaseontwerp](docs/database-design.md). PostgreSQL is bestaand;
-Power BI blijft toekomstig.
+- [Architectuur en C4](docs/architecture.md) · [databaseontwerp/ERD](docs/database-design.md)
+- [Raw contract](docs/data-contract.md) · [processed contract](docs/processed-data-contract.md)
+- [API](docs/api.md) · [dashboard](docs/dashboard.md) · [pipeline operations](docs/pipeline-operations.md)
+- [Runbook](docs/runbook.md) · [CI/CD](docs/ci-cd.md) · [TOGAF-light](docs/togaf-alignment.md)
+- [ADR-register](docs/decisions/README.md) · [portfolio-walkthrough](docs/portfolio-walkthrough.md)
 
-## CI en tests
+## Aanbevolen GitHub-presentatie
 
-GitHub Actions draait op pull requests, pushes naar `main` en handmatige starts.
-De quality-matrix gebruikt Python 3.11 en 3.14 en voert uitsluitend databasevrije
-tests uit. Pas daarna start de afzonderlijke PostgreSQL-integratiejob alleen
-`postgres_test` op `localhost:5434/gemeente_data_test`. CI start of wijzigt nooit
-de ontwikkelservice op 5433. Zie [CI/CD en repositorykwaliteit](docs/ci-cd.md)
-voor lokale reproductie, dependency-updates en probleemoplossing.
+Beschrijving: “Traceerbaar CBS gemeentelijk bevolkingsplatform met Python, PostgreSQL, FastAPI en React.” Website: leeg tot fase 9B. Topics: `python`, `fastapi`, `postgresql`, `react`, `typescript`, `docker`, `data-engineering`, `cbs-open-data`, `github-actions`, `data-quality`, `alembic`, `government-data`.

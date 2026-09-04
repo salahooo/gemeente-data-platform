@@ -1,4 +1,4 @@
-import {fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {act, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {beforeEach, describe, expect, it, vi} from "vitest";
 
 import {App} from "./App";
@@ -59,8 +59,12 @@ describe("App", () => {
     await screen.findByText("API: Beschikbaar");
     fireEvent.change(screen.getByLabelText("Gemeente"), {target: {value: "Vo"}});
     fireEvent.click(await screen.findByRole("button", {name: /Voorbeeldstad/}));
+    await act(async () => { await mockedApi.population.mock.results[0]?.value; });
     await screen.findByText("Tijdreeks Voorbeeldstad");
+    await waitFor(() => expect(document.querySelectorAll(".recharts-responsive-container")).toHaveLength(3));
+    const rankingCalls = mockedApi.ranking.mock.calls.length;
     fireEvent.click(screen.getByRole("button", {name: "Wis filters"}));
+    await waitFor(() => expect(mockedApi.ranking.mock.calls.length).toBeGreaterThan(rankingCalls));
     expect(screen.getByText("Selecteer een gemeente")).toBeInTheDocument();
     expect(screen.getByLabelText("Gemeente")).toHaveValue("");
   });
