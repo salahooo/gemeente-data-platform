@@ -87,6 +87,8 @@ jobs:
           umask 077
           python -c "import secrets; print(secrets.token_urlsafe(32))" > secrets/app_password.txt
           python -c "import secrets; print(secrets.token_urlsafe(32))" > secrets/postgres_password.txt
+          # File-backed Compose secrets are bind-mounted; init scripts run as postgres.
+          chmod 0444 secrets/app_password.txt secrets/postgres_password.txt
       - name: Start isolated PostgreSQL test service
         run: docker compose --profile test up -d --wait --no-deps postgres_test
       - name: Show PostgreSQL test logs after startup failure
