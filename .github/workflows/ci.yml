@@ -89,6 +89,9 @@ jobs:
           python -c "import secrets; print(secrets.token_urlsafe(32))" > secrets/postgres_password.txt
       - name: Start isolated PostgreSQL test service
         run: docker compose --profile test up -d --wait --no-deps postgres_test
+      - name: Show PostgreSQL test logs after startup failure
+        if: failure()
+        run: docker compose --profile test logs --no-color postgres_test || true
       - name: Run PostgreSQL integration tests
         run: uv run pytest -m integration
       - name: Stop isolated PostgreSQL test service
