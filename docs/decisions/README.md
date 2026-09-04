@@ -10,3 +10,4 @@ Dit register bevat alleen vastgelegde Architecture Decision Records (ADR's).
 | ADR-004 | PostgreSQL via Docker Compose | Accepted | 2026-09-04 | [ADR-004](ADR-004-postgresql-docker-compose.md) |
 | ADR-005 | Transactionele snapshot-load | Accepted | 2026-09-04 | [ADR-005](ADR-005-transactional-snapshot-load.md) |
 | ADR-006 | Alembic voor schema migrations | Accepted | 2026-09-04 | [ADR-006](ADR-006-alembic-schema-migrations.md) |
+| ADR-007 | Georkestreerde pipeline-run en operationele lineage | Accepted | 2026-09-04 | [ADR-007](ADR-007-pipeline-orchestration-and-lineage.md) |

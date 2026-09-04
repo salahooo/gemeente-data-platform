@@ -20,7 +20,8 @@ Iedere tabel krijgt daarnaast een UTF-8-CSV-export met dezelfde inhoud.
   als technische bron.
 - Alleen JSON: passend voor raw OData-responses, maar minder geschikt voor
   relationele analyse-tabellen.
-- Direct PostgreSQL: toekomstig en buiten de scope van fase 3.
+- Directe raw-naar-PostgreSQL-load: buiten scope; PostgreSQL consumeert uitsluitend
+  een gevalideerde processed run.
 
 ## Consequenties
 

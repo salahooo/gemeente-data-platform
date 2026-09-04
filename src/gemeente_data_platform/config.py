@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     database_connect_timeout: int = 10
     database_application_name: str = "gemeente-data-platform"
     database_sslmode: str = "disable"
+    pipeline_root: Path = Path("data/runs")
+    pipeline_runtime_root: Path = Path("data/runtime")
+    pipeline_lock_timeout_seconds: float = 5.0
     cbs_base_url: str = "https://opendata.cbs.nl/ODataApi/OData"
     cbs_dataset_code: str = "03759ned"
     cbs_request_timeout: float = 30.0

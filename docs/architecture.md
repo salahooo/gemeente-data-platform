@@ -2,10 +2,9 @@
 
 ## Doel en scope
 
-Het Gemeente Data Platform haalt openbare CBS-data gecontroleerd op. Fase 3 bouwt
-uit een gevalideerde raw run analyseklare bevolkingstabellen. De huidige keten
-omvat dus raw extractie en lokale transformatie; PostgreSQL, SQL-views en Power
-BI zijn toekomstig.
+Het Gemeente Data Platform haalt openbare CBS-data gecontroleerd op. Fase 5
+bouwt uit een gevalideerde raw run analyseklare bevolkingstabellen en
+orkestreert die naar een gevalideerde PostgreSQL-snapshot. Power BI is toekomstig.
 
 ## 1. Systeemcontext
 
@@ -27,7 +26,7 @@ flowchart LR
     etl[Python ETL-applicatie - bestaand] --> cbs[CBS OData API - extern]
     etl --> raw[Raw JSON landing zone - bestaand]
     etl --> processed[Processed Parquet en CSV - bestaand]
-    processed -. toekomstig .-> postgres[PostgreSQL-database - toekomstig]
+    processed --> postgres[PostgreSQL-database - bestaand]
     postgres -. toekomstig .-> powerbi[Power BI - toekomstig en extern]
 ```
 
@@ -52,12 +51,12 @@ flowchart LR
         transformation[population_transformation.py - bestaand]
         processedcontracts[processed_contracts.py - bestaand]
         processedstorage[processed_storage.py - bestaand]
-        database[Databaselaag - toekomstig]
+        database[run_pipeline.py en databaselaag - bestaand]
     end
     cbs[CBS OData API - extern]
     raw[Raw JSON - bestaand]
     processed[Processed Parquet en CSV - bestaand]
-    postgres[PostgreSQL - toekomstig]
+    postgres[PostgreSQL - bestaand]
 
     config --> extraction
     extraction --> client
@@ -72,11 +71,34 @@ flowchart LR
     transformation --> processedcontracts
     pipeline --> processedstorage
     processedstorage --> processed
-    processed -. toekomstig .-> database
-    database -. toekomstig .-> postgres
+    processed --> database
+    database --> postgres
 ```
 
 ## 4. Dynamisch gedrag
+
+### Sequence diagram: end-to-end pipeline
+
+```mermaid
+sequenceDiagram
+    participant U as Operator
+    participant P as run_pipeline
+    participant S as Pipeline manifest en JSONL
+    participant C as CBS OData
+    participant D as PostgreSQL
+
+    U->>P: start of resume
+    P->>S: verkrijg lock en schrijf state transition atomair
+    P->>C: extract + raw-validatie
+    P->>S: leg raw/processed artifacts en checksums vast
+    P->>D: Alembic upgrade en transactionele snapshot-load
+    P->>D: reconcile core, mart en ops.etl_run
+    P->>S: schrijf validatierapport en eindstatus
+```
+
+De cross-platform lock laat per project slechts één schrijvende pipeline toe.
+Een resume verifieert geslaagde raw-, processed- en validatie-artifacts voordat
+de state machine met de eerste onafgeronde fase verdergaat.
 
 ### Sequence diagram: raw naar processed
 
@@ -125,7 +147,7 @@ flowchart LR
     transform --> period[dim_period]
     transform --> population[fact_population]
     transform --> quality[Processed quality report en manifest]
-    municipality --> postgres[PostgreSQL - toekomstig]
+    municipality --> postgres[PostgreSQL - bestaand]
     period --> postgres
     population --> postgres
     postgres --> powerbi[Power BI - toekomstig]
@@ -154,7 +176,7 @@ Het relationele schema staat in het
 
 ## Huidige versus doelarchitectuur
 
-| Onderdeel | Huidig: fase 4 | Later: doelarchitectuur |
+| Onderdeel | Huidig: fase 5 | Later: doelarchitectuur |
 | --- | --- | --- |
 | Databron | CBS OData API, dataset `03759ned` | Uitbreidbare CBS-bronnen |
 | Ingestie | Gevalideerde raw extractie | Herhaalbare extracties voor meer datasets |

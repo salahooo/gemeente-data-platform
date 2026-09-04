@@ -72,4 +72,5 @@ De raw landing zone bewaart CBS-records zonder hernoemen, aggregeren of
 inhoudelijk wijzigen. Fase 3 leest uitsluitend een volledig gevalideerde raw run
 en schrijft een afzonderlijke processed run; raw bestanden worden nooit
 gewijzigd. Zie het [processed-datacontract](processed-data-contract.md) voor
-selectie, modellering, outputvalidatie en herkomst. PostgreSQL blijft toekomstig.
+selectie, modellering, outputvalidatie en herkomst. PostgreSQL consumeert alleen
+de gevalideerde processed-laag; raw blijft immutable.

@@ -5,9 +5,13 @@ volume te verwijderen: `docker compose stop postgres`. Gebruik nooit `down -v`.
 Controleer met `docker compose ps` en
 `py -3.14 -m gemeente_data_platform.check_database`.
 
-Voer migrations uit met `py -3.14 -m alembic upgrade head`, valideer met
-`py -3.14 -m gemeente_data_platform.load_database --dry-run` en laad met
-`py -3.14 -m gemeente_data_platform.load_database`.
+Gebruik normaal één gecontroleerde run:
+`py -3.14 -m gemeente_data_platform.run_pipeline`. Deze voert extract,
+transformatie, migration, snapshot-load en databasevalidatie uit en legt het
+run-id vast in `data/runs/` en `ops.etl_run`. Gebruik eerst
+`py -3.14 -m gemeente_data_platform.run_pipeline --dry-run` om uitsluitend het
+plan/manifest te maken. Zie [pipeline operations](pipeline-operations.md) voor
+resume en starten bij een latere fase.
 
 pgAdmin: host `localhost`, poort `5433`, database `gemeente_data`, gebruiker
 `gemeente_app`; lees het wachtwoord uit het genegeerde lokale secretbestand.

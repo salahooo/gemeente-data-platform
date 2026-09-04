@@ -2,7 +2,7 @@
 
 Een portfolio-project voor functies rond data bij Nederlandse gemeenten en de overheid. Het project krijgt uiteindelijk een reproduceerbare dataketen voor gemeentelijke CBS-data.
 
-## Huidige fase: gevalideerde processed bevolkingsdata
+## Huidige fase: betrouwbare end-to-end bevolkingspipeline
 
 De professionele Python-projectbasis ontdekt dimensies, haalt ongetransformeerde
 bevolkingsrecords voor gemeentecodes op uit de CBS Open Data API voor dataset
@@ -26,13 +26,15 @@ gebruikt daarna uitsluitend zo'n lokaal gevalideerde raw run.
 Historische gemeentecodes worden niet geharmoniseerd of samengevoegd. Een actieve
 gemeentewaarneming is in dit project een gemeente-jaarrecord
 met een geldige numerieke bevolking op 1 januari; ontbrekend is niet nul.
-PostgreSQL, SQL-transformaties en Power BI zijn evenmin geïmplementeerd.
+Fase 5 orkestreert CBS-extractie, raw-validatie, processed-transformatie,
+Alembic, transactionele PostgreSQL-snapshot-load en databasevalidatie als één
+herstelbare run. Elke pipeline-run heeft een getypeerd manifest, JSONL-log en
+lineage naar `ops.etl_run`. Power BI blijft toekomstig.
 
 ## Geplande vervolgfases
 
-1. Verwerkte gegevens laden in PostgreSQL met SQLAlchemy en Psycopg.
-2. Analyse- en rapportageviews opbouwen met SQL.
-3. Dashboards ontwikkelen in Power BI.
+1. Productie-geschikte scheduling, backup en herstel ontwerpen.
+2. Dashboards ontwikkelen in Power BI.
 
 ## Architectuur
 
@@ -44,6 +46,8 @@ PostgreSQL, SQL-transformaties en Power BI zijn evenmin geïmplementeerd.
 - [ADR-001: afzonderlijke herbruikbare CBS OData-client](docs/decisions/ADR-001-cbs-odata-client.md)
 - [ADR-002: historische gemeentecodes behouden](docs/decisions/ADR-002-historical-municipality-codes.md)
 - [ADR-003: Parquet als canonieke processed opslag](docs/decisions/ADR-003-parquet-as-canonical-processed-storage.md)
+- [ADR-007: pipeline-orchestratie en lineage](docs/decisions/ADR-007-pipeline-orchestration-and-lineage.md)
+- [Pipeline-operations](docs/pipeline-operations.md)
 
 ## Lokaal starten
 
@@ -57,6 +61,8 @@ py -3.14 -m gemeente_data_platform.main
 py -3.14 -m gemeente_data_platform.fetch_metadata
 py -3.14 -m gemeente_data_platform.extract_population
 py -3.14 -m gemeente_data_platform.transform_population
+py -3.14 -m gemeente_data_platform.run_pipeline --dry-run
+py -3.14 -m gemeente_data_platform.run_pipeline
 py -3.14 -m pytest
 py -3.14 -m ruff check .
 ```
@@ -91,11 +97,10 @@ en `manifest.json`. Generated data wordt niet door Git gevolgd. Zie het
 [processed-datacontract](docs/processed-data-contract.md) voor schema's,
 selectieregels en validaties.
 
-## PostgreSQL-laag
+## PostgreSQL en end-to-end pipeline
 
-Fase 4 laadt een gevalideerde processed snapshot in een lokale PostgreSQL 17
-Docker-container op poort 5433. Start met `docker compose up -d postgres`, voer
-`py -3.14 -m alembic upgrade head` uit en laad met
-`py -3.14 -m gemeente_data_platform.load_database`. PostgreSQL is bestaand;
-Power BI blijft toekomstig. Zie het [runbook](docs/runbook.md) en het
-[databaseontwerp](docs/database-design.md).
+De standaardopdracht `py -3.14 -m gemeente_data_platform.run_pipeline` voert
+alle vijf fasen uit tegen de lokale PostgreSQL 17 Docker-container op poort 5433.
+Zie het [runbook](docs/runbook.md), [pipeline-operations](docs/pipeline-operations.md)
+en het [databaseontwerp](docs/database-design.md). PostgreSQL is bestaand;
+Power BI blijft toekomstig.

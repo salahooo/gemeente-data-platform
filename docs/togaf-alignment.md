@@ -42,37 +42,32 @@ met een openbare CBS-dataset, zonder gemeentelijke persoonsgegevens.
 - De processed run bevat Parquet, CSV, kwaliteitsinformatie, checksums en een
   manifest met herkomst.
 - Een specifieke raw run is selecteerbaar voor reproduceerbare verwerking.
+- Eén pipeline-run orkestreert extract, transformatie, schema, snapshot-load en
+  database-/mart-reconciliatie met persistente state, checksums en lineage.
 
 ## Niet-functionele eisen
 
 - Configuratie via omgevingsvariabelen met veilige standaardwaarden.
 - Offline testbaarheid door HTTP-responses en opslag te mocken.
 - Raw data blijft onveranderd; publicatie gebeurt atomair na validatie.
-- Python 3.11+ is de minimale projectvereiste; validatie gebruikt Python 3.14.
+- Python 3.11+ is de minimale projectvereiste; operationele validatie gebruikt Python 3.14.
 - Broncodekwaliteit wordt gecontroleerd met pytest en Ruff.
 
-## Huidige architectuur: fase 3
+## Huidige architectuur: fase 5
 
-De huidige implementatie bevat de bestaande onderdelen in alle drie C4-niveaus:
-een Python-applicatie, de externe CBS OData API, raw JSON-runmappen en processed
-Parquet-, CSV- en JSON-runmappen. Een transformatie selecteert de nieuwste
-volledige geldige raw run of een expliciete run, valideert de inhoud en bouwt
-`dim_municipality`, `dim_period` en `fact_population`. Historische GM-codes
-worden niet geharmoniseerd. PostgreSQL, SQL-views en Power BI bestaan nog niet.
-
-## Huidige architectuur: fase 4
-
-PostgreSQL 17 is nu een gerealiseerde data-architectuurcomponent. De Python
-loader zet gevalideerde processed Parquet-data transactioneel om naar `core`,
-analytische views staan in `mart` en auditbare runs in `ops`. `gemeente_app`
-heeft least-privilege rechten; secrets staan lokaal buiten Git. Power BI blijft
+De huidige implementatie omvat een Python-orchestrator, CBS OData, immutable raw
+JSON-runmappen, processed Parquet/CSV-runs en PostgreSQL 17 op localhost:5433.
+De orchestrator bewaart een manifest/state machine, JSONL-logging, locking en
+pipeline-to-ETL-lineage. De loader zet gevalideerde processed data transactioneel
+om naar `core`; `mart`-views worden dynamisch met het processed manifest
+gereconcilieerd. Historische GM-codes worden niet geharmoniseerd. Power BI blijft
 toekomstig.
 
 ## Doelarchitectuur: toekomstig
 
-De beoogde keten is CBS OData API naar Python-verwerking, vervolgens PostgreSQL
-en SQL-views, met Power BI als presentatielaag. Dit zijn toekomstig geplande
-onderdelen en geen fase-3-functionaliteit.
+De beoogde keten breidt de gerealiseerde CBS OData-, Python-, PostgreSQL- en
+SQL-viewlagen uit met scheduling, beheerde opslag, backup/herstel en Power BI als
+presentatielaag. Deze uitbreidingen zijn toekomstig.
 
 ## Belangrijkste tussenstappen
 
@@ -88,4 +83,6 @@ onderdelen en geen fase-3-functionaliteit.
 | Onvolledige raw run | Manifest- en checksumcontrole vóór transformatie |
 | Niet-herleidbare verwerking | Raw run-id en raw-manifestchecksum in processed manifest |
 | Fout bij wegschrijven | Tijdelijke map, herlezing, validatie en atomaire publicatie |
-| Scope groeit te snel | Fasen scheiden; database en Power BI blijven toekomstig |
+| Onderbroken end-to-end run | Atomaire pipeline-state, artifactchecksums en resume |
+| Parallelle writer | Cross-platform projectlock |
+| Scope groeit te snel | Fasen scheiden; Power BI en productiebeheer blijven toekomstig |
