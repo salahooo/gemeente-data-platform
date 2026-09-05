@@ -75,7 +75,7 @@ def test_render_blueprint_is_static_safe_and_has_no_database_service():
     assert all("postgres" not in service["name"] for service in services)
     api = next(service for service in services if service["runtime"] == "docker")
     site = next(service for service in services if service["runtime"] == "static")
-    assert api["plan"] == "starter"
+    assert api["plan"] == "free"
     assert site["plan"] == "free"
     assert api["healthCheckPath"] == "/health"
     assert site["routes"] == [
