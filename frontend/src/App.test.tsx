@@ -26,6 +26,18 @@ beforeEach(() => {
 });
 
 describe("App", () => {
+  it("toont analyses en toegankelijke portfolio-links", async () => {
+    render(<App />);
+    await screen.findByText("API: Beschikbaar");
+    expect(screen.getByRole("region", {name: "Bevolkingsanalyses"})).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "Jaarlijkse verandering Nederland"})).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "Ontwikkeld door Salah Abdulkader"})).toBeInTheDocument();
+    expect(screen.getByRole("link", {name: "GitHub-profiel Salah"})).toHaveAttribute("href", "https://github.com/salahooo");
+    expect(screen.getByRole("link", {name: "GitHub-repository"})).toHaveAttribute("href", "https://github.com/salahooo/gemeente-data-platform");
+    expect(screen.getByRole("link", {name: "Publieke API-documentatie"})).toHaveAttribute("rel", "noopener noreferrer");
+    expect(screen.getByRole("link", {name: "LinkedIn Salah"})).toHaveAttribute("href", "https://www.linkedin.com/in/salah-abdulkader/");
+    expect(screen.getByRole("link", {name: "LinkedIn Salah"})).toHaveAttribute("rel", "noopener noreferrer");
+  });
   it("toont kerncijfers, null-waarschuwing en ranking uit de API", async () => {
     render(<App />);
     expect(await screen.findByText("API: Beschikbaar")).toBeInTheDocument();
@@ -61,7 +73,7 @@ describe("App", () => {
     fireEvent.click(await screen.findByRole("button", {name: /Voorbeeldstad/}));
     await act(async () => { await mockedApi.population.mock.results[0]?.value; });
     await screen.findByText("Tijdreeks Voorbeeldstad");
-    await waitFor(() => expect(document.querySelectorAll(".recharts-responsive-container")).toHaveLength(3));
+    await screen.findByRole("heading", {name: "Jaarlijkse verandering Voorbeeldstad"});
     const rankingCalls = mockedApi.ranking.mock.calls.length;
     fireEvent.click(screen.getByRole("button", {name: "Wis filters"}));
     await waitFor(() => expect(mockedApi.ranking.mock.calls.length).toBeGreaterThan(rankingCalls));
