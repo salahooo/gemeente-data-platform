@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 from typing import Any
 
 from alembic.config import Config
-from sqlalchemy import text
+from sqlalchemy import String, bindparam, text
 
 from alembic import command
 from gemeente_data_platform.config import PROJECT_ROOT, Settings
@@ -15,6 +16,7 @@ from gemeente_data_platform.database import create_database_engine
 from gemeente_data_platform.database_loader import load_processed_run, load_snapshot
 from gemeente_data_platform.database_validator import validate_database_snapshot
 from gemeente_data_platform.pipeline_security import redact
+from gemeente_data_platform.processed_storage import PROCESSED_ROOT
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -70,9 +72,9 @@ def _create_roles(connection: Any, settings: Settings) -> None:
             text(
                 "SELECT format("
                 f"'CREATE ROLE {role} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE "
-                "NOREPLICATION PASSWORD %L', :password) "
+                "NOREPLICATION PASSWORD %L', CAST(:password AS text)) "
                 "WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :role)"
-            ),
+            ).bindparams(bindparam("password", type_=String())),
             {"password": password, "role": role},
         ).scalar_one_or_none()
         if create_sql:
@@ -123,6 +125,25 @@ def preflight_database(engine: Any, settings: Settings, create_roles: bool) -> N
             )
 
 
+def processed_run_directory(dataset_code: str, processed_run: str) -> Path:
+    """Resolve only one canonical, non-traversing processed run directory."""
+    dataset = _safe_path_component(dataset_code, "dataset code")
+    run_id = _safe_path_component(processed_run, "processed run id")
+    candidate = (PROCESSED_ROOT / dataset / run_id).resolve()
+    root = PROCESSED_ROOT.resolve()
+    if not candidate.is_relative_to(root):
+        raise ValueError("Processed run path must stay within canonical storage.")
+    return candidate
+
+
+def _safe_path_component(value: str, label: str) -> str:
+    if not value or value in {".", ".."} or "/" in value or "\\" in value:
+        raise ValueError(f"{label.capitalize()} must be a single path component.")
+    if Path(value).is_absolute():
+        raise ValueError(f"{label.capitalize()} must be a relative path component.")
+    return value
+
+
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
     try:
@@ -140,7 +161,7 @@ def main(argv: list[str] | None = None) -> None:
             print("Migrations completed; no pipeline load was requested.")
             return
         run = load_processed_run(
-            PROJECT_ROOT / "data" / "processed" / args.dataset_code / args.processed_run
+            processed_run_directory(args.dataset_code, args.processed_run)
         )
         load_snapshot(engine, run)
         validate_database_snapshot(engine, run)
