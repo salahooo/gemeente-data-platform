@@ -12,6 +12,7 @@ from sqlalchemy.engine import make_url
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LOCAL_DATABASE_HOSTS = {"localhost", "127.0.0.1", "::1"}
 SSL_MODES = {"require", "verify-ca", "verify-full"}
+PSYCOPG3_DRIVER = "postgresql+psycopg"
 
 
 class Settings(BaseSettings):
@@ -110,7 +111,7 @@ class Settings(BaseSettings):
         """Return a URL without formatting its password for logging."""
         override = self._override_value()
         if override:
-            return make_url(override)
+            return _normalise_postgresql_url(override)
         password = (
             self.database_password.get_secret_value()
             if self.database_password
@@ -123,7 +124,7 @@ class Settings(BaseSettings):
         if not password:
             raise ValueError("Database password is unavailable.")
         return URL.create(
-            "postgresql+psycopg",
+            PSYCOPG3_DRIVER,
             username=self.database_user,
             password=password,
             host=self.database_host,
@@ -146,7 +147,7 @@ class Settings(BaseSettings):
         if not password:
             raise ValueError("API database password is unavailable.")
         return URL.create(
-            "postgresql+psycopg",
+            PSYCOPG3_DRIVER,
             username=self.api_database_user,
             password=password,
             host=self.database_host,
@@ -158,6 +159,19 @@ class Settings(BaseSettings):
                 "sslmode": self.database_sslmode,
             },
         )
+
+
+def _normalise_postgresql_url(value: str) -> URL:
+    """Use the project's psycopg 3 driver for provider PostgreSQL URLs.
+
+    Managed providers commonly expose ``postgresql://``.  SQLAlchemy otherwise
+    selects its legacy psycopg2 dialect, which is deliberately not installed.
+    URL parsing and rewriting keep credentials structured and out of logs.
+    """
+    url = make_url(value)
+    if url.drivername in {"postgresql", "postgres"}:
+        return url.set(drivername=PSYCOPG3_DRIVER)
+    return url
 
 
 settings = Settings()

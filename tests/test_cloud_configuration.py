@@ -6,7 +6,11 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from gemeente_data_platform.config import Settings
+from gemeente_data_platform.config import PSYCOPG3_DRIVER, Settings
+from gemeente_data_platform.deploy_database import (
+    _create_roles,
+    processed_run_directory,
+)
 from gemeente_data_platform.deploy_database import main as deploy_database_main
 from gemeente_data_platform.pipeline_security import redact
 
@@ -27,6 +31,17 @@ def test_production_accepts_port_https_origin_and_ssl_database_url():
     assert settings.port == 10_000
     assert settings.database_url().host == "db.example.test"
     assert settings.allowed_origins() == ["https://dashboard.example.test"]
+
+
+def test_cloud_postgresql_url_uses_psycopg3_without_exposing_credentials():
+    settings = production_settings(
+        database_url_override=(
+            "postgresql://cloud_user:opaque-password@db.example.test/gemeente?sslmode=require"
+        )
+    )
+    url = settings.database_url()
+    assert url.drivername == PSYCOPG3_DRIVER
+    assert "opaque-password" not in str(url)
 
 
 @pytest.mark.parametrize(
@@ -85,3 +100,62 @@ def test_database_bootstrap_dry_run_never_connects(monkeypatch, capsys):
     monkeypatch.setenv("API_ALLOWED_ORIGINS", "https://dashboard.example.test")
     deploy_database_main(["--processed-run", "known-run", "--dry-run"])
     assert "Dry run" in capsys.readouterr().out
+
+
+def test_processed_run_directory_uses_canonical_cbs_root():
+    directory = processed_run_directory("03759ned", "run-20260905")
+    assert directory.parts[-4:] == ("processed", "cbs", "03759ned", "run-20260905")
+
+
+@pytest.mark.parametrize("value", ["../outside", "..\\outside", "/tmp/outside", "."])
+def test_processed_run_directory_rejects_path_traversal(value):
+    with pytest.raises(ValueError, match="path component"):
+        processed_run_directory("03759ned", value)
+
+
+class _RoleSqlCaptureConnection:
+    def __init__(self):
+        self.calls = []
+
+    def execute(self, statement, parameters=None):
+        self.calls.append((statement, parameters))
+        if "rolcreaterole" in str(statement):
+            return _ScalarResult(True)
+        if parameters and "grant" in parameters:
+            return _ScalarResult("SELECT 1")
+        if "SELECT format(" in str(statement):
+            return _ScalarResult(None)
+        return _ScalarResult(None)
+
+
+class _ScalarResult:
+    def __init__(self, value):
+        self.value = value
+
+    def scalar_one(self):
+        return self.value
+
+    def scalar_one_or_none(self):
+        return self.value
+
+
+def test_role_creation_sql_binds_password_as_text_for_psycopg3():
+    connection = _RoleSqlCaptureConnection()
+    settings = production_settings(
+        bootstrap_app_password="synthetic-app-password",
+        bootstrap_api_password="synthetic-api-password",
+    )
+    _create_roles(connection, settings)
+    role_queries = [
+        statement
+        for statement, _ in connection.calls
+        if "PASSWORD %L" in str(statement)
+    ]
+    assert len(role_queries) == 2
+    assert all(
+        "CAST(:password AS text)" in str(statement) for statement in role_queries
+    )
+    assert all(
+        statement._bindparams["password"].type.python_type is str
+        for statement in role_queries
+    )
