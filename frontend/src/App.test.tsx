@@ -6,7 +6,7 @@ import {api} from "./api";
 
 vi.mock("./api", () => ({api: {
   ready: vi.fn(), years: vi.fn(), national: vi.fn(), ranking: vi.fn(),
-  municipalities: vi.fn(), municipality: vi.fn(), population: vi.fn(),
+  municipalities: vi.fn(), municipality: vi.fn(), population: vi.fn(), lineage: vi.fn(),
 }, publicApiUrl: (path: string) => path}));
 
 const mockedApi = vi.mocked(api);
@@ -23,6 +23,7 @@ beforeEach(() => {
   mockedApi.ranking.mockResolvedValue([{rank: 1, municipality_code: "GM0001", municipality_name: "Voorbeeldstad", population_january_1: 100_000}]);
   mockedApi.municipalities.mockResolvedValue({items: [{municipality_code: "GM0001", municipality_name: "Voorbeeldstad"}]});
   mockedApi.population.mockResolvedValue({observations: [{year: 2025, population_january_1: 99_000, average_population: "99500", population_change_absolute: 1_000, population_change_percent: "1.0"}]});
+  mockedApi.lineage.mockResolvedValue({processed_run_id: "processed-safe", pipeline_run_id: "pipeline-safe", completed_at: "2026-09-05T12:00:00Z"});
 });
 
 describe("App", () => {
@@ -31,12 +32,14 @@ describe("App", () => {
     await screen.findByText("API: Beschikbaar");
     expect(screen.getByRole("region", {name: "Bevolkingsanalyses"})).toBeInTheDocument();
     expect(screen.getByRole("heading", {name: "Jaarlijkse verandering Nederland"})).toBeInTheDocument();
+    expect(screen.getByText(/De Y-as gebruikt een dynamisch bereik/)).toBeInTheDocument();
     expect(screen.getByRole("heading", {name: "Ontwikkeld door Salah Abdulkader"})).toBeInTheDocument();
-    expect(screen.getByRole("link", {name: "GitHub-profiel Salah"})).toHaveAttribute("href", "https://github.com/salahooo");
-    expect(screen.getByRole("link", {name: "GitHub-repository"})).toHaveAttribute("href", "https://github.com/salahooo/gemeente-data-platform");
-    expect(screen.getByRole("link", {name: "Publieke API-documentatie"})).toHaveAttribute("rel", "noopener noreferrer");
-    expect(screen.getByRole("link", {name: "LinkedIn Salah"})).toHaveAttribute("href", "https://www.linkedin.com/in/salah-abdulkader/");
-    expect(screen.getByRole("link", {name: "LinkedIn Salah"})).toHaveAttribute("rel", "noopener noreferrer");
+    expect(screen.getByRole("link", {name: "GitHub-profiel"})).toHaveAttribute("href", "https://github.com/salahooo");
+    expect(screen.getByRole("link", {name: "Broncode"})).toHaveAttribute("href", "https://github.com/salahooo/gemeente-data-platform");
+    expect(screen.getAllByRole("link", {name: "API-documentatie"}).at(-1)).toHaveAttribute("rel", "noopener noreferrer");
+    expect(screen.getByRole("link", {name: "LinkedIn"})).toHaveAttribute("href", "https://www.linkedin.com/in/salah-abdulkader/");
+    expect(screen.getByRole("link", {name: "LinkedIn"})).toHaveAttribute("rel", "noopener noreferrer");
+    await waitFor(() => expect(screen.getByLabelText("Databron en actualiteit")).toHaveTextContent("processed-safe"));
   });
   it("toont kerncijfers, null-waarschuwing en ranking uit de API", async () => {
     render(<App />);
@@ -54,7 +57,20 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", {name: /Voorbeeldstad/}));
     await waitFor(() => expect(mockedApi.population).toHaveBeenCalledWith("GM0001"));
     expect(screen.getByText("Tijdreeks Voorbeeldstad")).toBeInTheDocument();
-    expect(location.search).toContain("municipality=GM0001");
+    await waitFor(() => expect(location.search).toContain("municipality=GM0001"));
+  });
+
+  it("toont één selectiekaart en een vergelijking met URL-state", async () => {
+    render(<App />);
+    await screen.findByText("Selecteer een gemeente");
+    expect(screen.queryByText("Jaarlijkse verandering gemeente")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Gemeente"), {target: {value: "Vo"}});
+    fireEvent.click(await screen.findByRole("button", {name: /Voorbeeldstad/}));
+    await screen.findByLabelText("Vergelijk met gemeente");
+    mockedApi.municipalities.mockResolvedValueOnce({items: [{municipality_code: "GM0002", municipality_name: "Anderstad"}]});
+    fireEvent.change(screen.getByLabelText("Vergelijk met gemeente"), {target: {value: "Vo"}});
+    fireEvent.click(await screen.findByRole("button", {name: /Anderstad/}));
+    await waitFor(() => expect(location.search).toContain("compare=GM0002"));
   });
 
   it("kiest standaard het nieuwste beschikbare jaar en werkt de URL bij", async () => {

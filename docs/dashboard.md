@@ -20,6 +20,10 @@ docker compose --profile dashboard up -d dashboard
 
 Open `http://localhost:3000`. Het standaardjaar is het nieuwste API-jaar;
 `average_population: null` voor 2026 wordt zichtbaar als ontbrekend, nooit nul.
-De interface bevat KPI's, nationale trend, top-10, zoeken en een gemeentelijke
-tijdreeks. Historische herindelingen kunnen trends beïnvloeden. Toekomstig:
-officiële versioneerbare gemeentegeometrie en deployment.
+De interface bevat KPI's, nationale trend, top-10, zoeken, gemeentelijke
+tijdreeks en een optionele vergelijking van maximaal twee gemeenten. Na een
+selectie toont zij ook de gemeentelijke jaarverandering en nationale rang. De
+compacte actualiteitsbalk noemt CBS, de beschikbare periode en de laatste
+succesvolle datasetload zonder interne paden, checksums of foutdetails.
+Historische herindelingen kunnen trends beïnvloeden. Toekomstig: officiële
+versioneerbare gemeentegeometrie en deployment.

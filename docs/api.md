@@ -15,10 +15,17 @@ stabiele JSON-contracten later consumeren.
 | `GET /api/v1/municipalities/{code}/population` | Tijdreeks en jaar-op-jaar |
 | `GET /api/v1/national/population` | Landelijke totalen |
 | `GET /api/v1/rankings/population?year=2026` | Deterministische rangorde |
+| `GET /api/v1/lineage/latest` | Veilige identificatie van de laatste succesvolle datasetload |
 
 `page` begint bij 1 en `page_size` is 1–100. Rankings vereisen `year`; `limit`
-is 1–100. Ongeldige invoer retourneert 422, onbekende gemeenten 404 en een
+is 1–500. Ongeldige invoer retourneert 422, onbekende gemeenten 404 en een
 onbereikbare database 503. Elke response bevat `X-Request-ID`.
+
+De lineage-response projecteert uitsluitend processed/pipeline-run-id en
+voltooiingstijd uit `mart`; operationele foutinformatie, checksums, paden en
+`ops`-toegang blijven privé. Wanneer de optionele lineage-view nog niet bestaat,
+blijft de basis-readiness beschikbaar en kan een consumer veilig terugvallen op
+“niet beschikbaar”.
 
 `average_population` is voor 2026 `null`; ontbrekend betekent nadrukkelijk niet
 nul. De eerste jaar-op-jaarobservatie houdt alle vorige/veranderwaarden `null`.

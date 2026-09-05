@@ -110,6 +110,13 @@ class MartRepository:
             {"year": year, "limit": limit},
         )
 
+    def latest_lineage(self) -> dict[str, Any] | None:
+        rows = self._rows(
+            "SELECT processed_run_id, pipeline_run_id, completed_at "
+            "FROM mart.v_dataset_lineage"
+        )
+        return rows[0] if rows else None
+
     def _rows(
         self, statement: str, values: dict[str, Any] | None = None
     ) -> list[dict[str, Any]]:

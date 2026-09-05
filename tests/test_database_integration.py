@@ -90,7 +90,7 @@ def test_migration_lifecycle_objects_and_revision(engine):
             c.execute(
                 text("SELECT version_num FROM public.alembic_version")
             ).scalar_one()
-            == "20260904_04"
+            == "20260905_01"
         )
         assert (
             c.execute(
@@ -106,7 +106,7 @@ def test_migration_lifecycle_objects_and_revision(engine):
                     "SELECT count(*) FROM information_schema.views WHERE table_schema = 'mart'"
                 )
             ).scalar_one()
-            == 4
+            == 5
         )
 
 
@@ -265,6 +265,9 @@ def test_loader_records_pipeline_lineage(engine, tmp_path):
             ).scalar_one()
             == "pipeline-20260904"
         )
+        assert c.execute(
+            text("SELECT processed_run_id, pipeline_run_id FROM mart.v_dataset_lineage")
+        ).one() == ("lineage", "pipeline-20260904")
 
 
 def test_loader_new_snapshot_replaces_previous_snapshot(engine, tmp_path):

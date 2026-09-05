@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, Field
@@ -55,6 +56,14 @@ class RankingItem(BaseModel):
     municipality_code: str
     municipality_name: str
     population_january_1: int
+
+
+class DatasetLineage(BaseModel):
+    """Public-safe provenance for the last successfully loaded dataset."""
+
+    processed_run_id: str
+    pipeline_run_id: str | None
+    completed_at: datetime
 
 
 class ErrorResponse(BaseModel):
