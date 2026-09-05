@@ -71,13 +71,12 @@ def test_render_blueprint_is_static_safe_and_has_no_database_service():
     services = blueprint["services"]
     assert len(services) == 2
     assert blueprint["previews"]["generation"] == "off"
-    assert all(
-        service["plan"] == "free" and service["branch"] == "main"
-        for service in services
-    )
+    assert all(service["branch"] == "main" for service in services)
     assert all("postgres" not in service["name"] for service in services)
     api = next(service for service in services if service["runtime"] == "docker")
     site = next(service for service in services if service["runtime"] == "static")
+    assert api["plan"] == "starter"
+    assert site["plan"] == "free"
     assert api["healthCheckPath"] == "/health"
     assert site["routes"] == [
         {"type": "rewrite", "source": "/*", "destination": "/index.html"}
