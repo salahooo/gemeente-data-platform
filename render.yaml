@@ -5,7 +5,7 @@ services:
   - type: web
     name: gemeente-data-platform-api
     runtime: docker
-    plan: free
+    plan: starter
     branch: main
     autoDeployTrigger: checksPass
     dockerfilePath: ./Dockerfile.api
