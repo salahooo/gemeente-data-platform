@@ -76,7 +76,7 @@ def test_render_blueprint_is_static_safe_and_has_no_database_service():
     api = next(service for service in services if service["runtime"] == "docker")
     site = next(service for service in services if service["runtime"] == "static")
     assert api["plan"] == "free"
-    assert site["plan"] == "free"
+    assert "plan" not in site
     assert api["healthCheckPath"] == "/health"
     assert site["routes"] == [
         {"type": "rewrite", "source": "/*", "destination": "/index.html"}

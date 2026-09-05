@@ -22,7 +22,6 @@ services:
   - type: web
     name: gemeente-data-platform-dashboard
     runtime: static
-    plan: free
     branch: main
     autoDeployTrigger: checksPass
     rootDir: frontend
