@@ -1,4 +1,4 @@
-import type {Municipality, National, Observation, Ranking, Year} from "./types";
+import type {Lineage, Municipality, National, Observation, Ranking, Year} from "./types";
 
 const timeout = 8000;
 
@@ -39,9 +39,10 @@ export const api = {
   ready: () => get<{status: string}>("/ready"),
   years: () => get<Year[]>("/api/v1/years"),
   national: () => get<National[]>("/api/v1/national/population"),
-  ranking: (year: number) => get<Ranking[]>(`/api/v1/rankings/population?year=${year}&limit=10`),
+  ranking: (year: number, limit = 10) => get<Ranking[]>(`/api/v1/rankings/population?year=${year}&limit=${limit}`),
   municipalities: (search: string, signal?: AbortSignal) =>
     get<{items: Municipality[]}>(`/api/v1/municipalities?search=${encodeURIComponent(search)}&page_size=10`, signal),
   municipality: (code: string) => get<Municipality>(`/api/v1/municipalities/${code}`),
   population: (code: string) => get<{observations: Observation[]}>(`/api/v1/municipalities/${code}/population`),
+  lineage: () => get<Lineage | null>("/api/v1/lineage/latest"),
 };

@@ -74,10 +74,12 @@ def test_api_role_is_login_read_only_and_endpoints_use_marts(app_engine):
         assert client.get("/api/v1/municipalities/GM0484/population").json()["observations"][-1]["average_population"] is None
         assert client.get("/api/v1/national/population").json()[-1]["average_population"] is None
         assert client.get("/api/v1/rankings/population", params={"year": 2026}).json()[0]["municipality_code"] == "GM0484"
+        assert client.get("/api/v1/lineage/latest").json() is None
 
     api_engine = create_engine(_api_settings().api_database_url())
     with api_engine.connect() as connection:
         assert connection.execute(text("SELECT count(*) FROM mart.v_population_by_municipality_year")).scalar_one() == 2
+        assert connection.execute(text("SELECT count(*) FROM mart.v_dataset_lineage")).scalar_one() == 0
         for statement in ("INSERT INTO core.dim_period VALUES ('2030JJ00', 2030, '2030', true, true)", "UPDATE core.dim_municipality SET municipality_name='x'", "DELETE FROM core.fact_population", "CREATE TABLE public.not_allowed (id integer)", "SELECT * FROM ops.etl_run"):
             with pytest.raises(ProgrammingError):
                 connection.execute(text(statement))

@@ -11,6 +11,12 @@ test("dashboard werkt tegen de read-only ontwikkel-API", async ({page}) => {
   await expect(page.getByRole("heading", {name: /Tijdreeks Alphen/})).toBeVisible();
   await expect(page).toHaveURL(/municipality=/);
   await expect(page.getByRole("heading", {name: /Jaarlijkse verandering Alphen/})).toBeVisible();
+  await expect(page.getByRole("heading", {name: "Vergelijk gemeenten"})).toBeVisible();
+  await page.getByRole("textbox", {name: "Vergelijk met gemeente", exact: true}).fill("Ams");
+  await expect(page.getByRole("button", {name: /Amsterdam/}).last()).toBeVisible();
+  await page.getByRole("button", {name: /Amsterdam/}).last().click();
+  await expect(page).toHaveURL(/compare=/);
+  await expect(page.getByRole("img", {name: "Vergelijking geselecteerde gemeenten"})).toBeVisible();
 });
 
 test("desktop- en mobielweergave zijn leesbaar", async ({browser}) => {
@@ -24,6 +30,7 @@ test("desktop- en mobielweergave zijn leesbaar", async ({browser}) => {
   await desktop.getByRole("textbox", {name: "Gemeente", exact: true}).fill("Alp");
   await desktop.getByRole("button", {name: /Alphen/}).first().click();
   await expect(desktop.getByRole("img", {name: /Jaarlijkse verandering Alphen/})).toBeVisible();
+  await expect(desktop.getByText(/Laatste succesvolle dataset/)).toBeVisible();
   expect(await desktop.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const nationalChart = desktop.getByRole("img", {name: "Nationale bevolkingstrend", exact: true});
   const bounds = await nationalChart.boundingBox();

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
@@ -84,6 +85,13 @@ class FakeRepository:
             }
         ]
 
+    def latest_lineage(self):
+        return {
+            "processed_run_id": "processed-public-safe",
+            "pipeline_run_id": "pipeline-public-safe",
+            "completed_at": datetime(2026, 9, 5, tzinfo=timezone.utc),
+        }
+
 
 def client(repository=None):
     return TestClient(create_app(repository=repository or FakeRepository()))
@@ -125,10 +133,16 @@ def test_detail_series_national_ranking_and_null_semantics():
         ranking = api.get(
             "/api/v1/rankings/population", params={"year": 2026, "limit": 1}
         ).json()
+        lineage = api.get("/api/v1/lineage/latest").json()
     assert series["observations"][0]["population_change_absolute"] is None
     assert series["observations"][1]["average_population"] is None
     assert national[0]["average_population"] is None
     assert ranking[0]["rank"] == 1
+    assert lineage == {
+        "processed_run_id": "processed-public-safe",
+        "pipeline_run_id": "pipeline-public-safe",
+        "completed_at": "2026-09-05T00:00:00Z",
+    }
 
 
 def test_not_found_and_validation_errors():

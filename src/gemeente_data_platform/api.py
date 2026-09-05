@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from gemeente_data_platform.api_models import (
+    DatasetLineage,
     ErrorResponse,
     HealthResponse,
     MunicipalityPage,
@@ -185,10 +186,19 @@ def create_app(
     )
     def rankings(
         year: int = Query(..., ge=1800, le=2200),
-        limit: int = Query(default=10, ge=1, le=100),
+        limit: int = Query(default=10, ge=1, le=500),
         repo: MartRepository = Depends(get_repository),
     ):
         return repo.rankings(year, limit)
+
+    @app.get(
+        "/api/v1/lineage/latest",
+        response_model=DatasetLineage | None,
+        tags=["analytics"],
+    )
+    def latest_lineage(repo: MartRepository = Depends(get_repository)):
+        """Expose only the latest successful load's public-safe identifiers."""
+        return repo.latest_lineage()
 
     return app
 
