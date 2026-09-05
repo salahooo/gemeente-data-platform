@@ -1,0 +1,20 @@
+import {useEffect, useMemo, useState} from "react";
+import type {Ranking} from "./types";
+import {number} from "./format";
+import {mapBounds, mapPath} from "./mapBounds";
+
+type Feature = {properties: {gm_code: string; gm_naam: string; jaar: string}; geometry: unknown};
+type Collection = {features?: unknown};
+
+export function MunicipalityMap({year, ranking, selectedCode, onSelect}: {year: number; ranking: Ranking[]; selectedCode?: string; onSelect: (item: Ranking) => void}) {
+  const [features, setFeatures] = useState<Feature[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { void fetch("/data/cbs-gemeenten-2026-simplified.geojson").then((response) => { if (!response.ok) throw new Error("Map unavailable"); return response.json(); }).then((data: Collection | null) => { if (!Array.isArray(data?.features)) throw new Error("Invalid map"); setFeatures(data.features.filter((feature): feature is Feature => feature != null && typeof feature.properties?.gm_code === "string" && typeof feature.properties?.gm_naam === "string")); setLoaded(true); }).catch(() => setFailed(true)); }, []);
+  const values = useMemo(() => new Map(ranking.map((item) => [item.municipality_code, item])), [ranking]);
+  const box = useMemo(() => features.length ? mapBounds(features) : null, [features]);
+  if (failed || (loaded && !box)) return <article className="card map" id="kaart"><h2>Gemeentekaart</h2><p className="empty compact">Kaartgeometrie is tijdelijk niet beschikbaar; selecteer een gemeente via zoeken.</p></article>;
+  const path = (feature: Feature) => mapPath(feature.geometry, box);
+  const max = ranking.reduce((largest, item) => Math.max(largest, item.population_january_1), 1);
+  return <article className="card map" id="kaart"><div className="comparison-heading"><div><h2>Gemeentekaart</h2><p className="caption">Inwonertal op 1 januari {year}; klik of gebruik Enter om te selecteren.</p></div><span className="map-legend">Licht: lager · donker: hoger</span></div>{features.length ? <svg viewBox="0 0 700 820" role="img" aria-label={`Kaart met inwonertal per gemeente in ${year}`}>{features.map((feature, index) => { const item = values.get(feature.properties.gm_code); const missing = !item; const shade = missing ? "#dce6e7" : `rgba(11, 110, 105, ${.2 + .8 * item.population_january_1 / max})`; return <path key={`${feature.properties.gm_code}-${index}`} d={path(feature)} fill={shade} className={selectedCode === feature.properties.gm_code ? "map-selected" : ""} tabIndex={0} role="button" aria-label={`${feature.properties.gm_naam} (${feature.properties.gm_code}), ${missing ? "waarde onbekend" : number(item.population_january_1)}`} onClick={() => item && onSelect(item)} onKeyDown={(event) => { if (item && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onSelect(item); } }}><title>{`${feature.properties.gm_naam}: ${missing ? "onbekend" : number(item.population_january_1)}`}</title></path>; })}</svg> : <p className="empty compact">Kaart laden…</p>}<p className="caption">Grenzen: CBS Wijken en Buurten 2026 versie 0 via PDOK, gemeentecode als join-key. Historische codes zonder 2026-geometrie blijven onbekend; dit duidt geen juridische herindeling.</p></article>;
+}
