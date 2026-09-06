@@ -17,13 +17,16 @@ from gemeente_data_platform.database_loader import load_processed_run, load_snap
 from gemeente_data_platform.database_validator import validate_database_snapshot
 from gemeente_data_platform.pipeline_security import redact
 from gemeente_data_platform.processed_storage import PROCESSED_ROOT
+from gemeente_data_platform.profile_pipeline import load_profile, read_run
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Explicit managed PostgreSQL bootstrap; never calls CBS."
     )
-    parser.add_argument("--processed-run", required=True)
+    runs = parser.add_mutually_exclusive_group(required=True)
+    runs.add_argument("--processed-run")
+    runs.add_argument("--profile-run", help="Load only a validated CBS 70072ned run")
     parser.add_argument("--dataset-code", default="03759ned")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--migrate-only", action="store_true")
@@ -152,6 +155,8 @@ def main(argv: list[str] | None = None) -> None:
             raise ValueError("Bootstrap requires APP_ENV=production.")
         # Settings validates URL, SSL, CORS and disallows localhost before I/O.
         if args.dry_run:
+            if args.profile_run:
+                read_run(processed_run_directory("70072ned", args.profile_run))
             print("Dry run: connectivity -> migrations -> load -> validate -> ready")
             return
         engine = create_database_engine()
@@ -159,6 +164,12 @@ def main(argv: list[str] | None = None) -> None:
         command.upgrade(Config(str(PROJECT_ROOT / "alembic.ini")), "head")
         if args.migrate_only:
             print("Migrations completed; no pipeline load was requested.")
+            return
+        if args.profile_run:
+            result = load_profile(
+                engine, processed_run_directory("70072ned", args.profile_run)
+            )
+            print(f"Profile deployment completed: {result}")
             return
         run = load_processed_run(
             processed_run_directory(args.dataset_code, args.processed_run)

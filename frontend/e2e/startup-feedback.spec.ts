@@ -1,4 +1,4 @@
-﻿import {expect, test} from "@playwright/test";
+import {expect, test} from "@playwright/test";
 
 test("fast startup, controlled cold start, green copy and mobile layout", async ({page, context}) => {
   const errors: string[] = [];
@@ -28,7 +28,7 @@ test("fast startup, controlled cold start, green copy and mobile layout", async 
   await expect(page.getByText("API: Beschikbaar")).toHaveClass(/ok/);
   await expect(page.getByText(/De gratis API wordt/)).toHaveCount(0);
   await expect(page.getByRole("img", {name: /Kaart met inwonertal/})).toBeVisible();
-  expect(dataRequests).toBe(4);
+  await expect.poll(() => dataRequests).toBe(5);
   await page.getByRole("button", {name: "Deel weergave"}).click();
   await expect(page.locator(".feedback-success")).toContainText("Weergavelink gekopieerd.");
   await expect(page.getByRole("button", {name: "✓ Link gekopieerd"})).toBeVisible();
@@ -49,7 +49,7 @@ test("fast startup, controlled cold start, green copy and mobile layout", async 
   await expect(page.getByRole("button", {name: "Vernieuwen"})).toBeEnabled();
   await expect(page.getByText("API: Beschikbaar")).toHaveClass(/ok/);
   await expect(page.getByText(/De gratis API wordt/)).toHaveCount(0);
-  expect(dataRequests).toBe(4);
+  await expect.poll(() => dataRequests).toBe(5);
   await page.getByRole("button", {name: "Deel weergave"}).click();
   await expect(page.locator(".feedback-success")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

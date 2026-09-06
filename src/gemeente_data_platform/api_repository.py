@@ -6,6 +6,7 @@ from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
 
 REQUIRED_MART_VIEWS = (
     "v_municipality_catalog",
@@ -116,6 +117,27 @@ class MartRepository:
             "FROM mart.v_dataset_lineage"
         )
         return rows[0] if rows else None
+
+    def age_profile(self, code: str, year: int) -> list[dict[str, Any]]:
+        try:
+            return self._rows(
+                "SELECT category, population, share_percent, national_share_percent "
+                "FROM mart.v_municipality_age_profile "
+                "WHERE municipality_code=:code AND year=:year ORDER BY category LIMIT 5",
+                {"code": code, "year": year},
+            )
+        except SQLAlchemyError:
+            return []
+
+    def data_quality(self) -> list[dict[str, Any]]:
+        try:
+            return self._rows(
+                "SELECT dataset_code,dataset_name,source,first_year,last_year,"
+                "completed_at,record_count,validation_status,missing_values,warning "
+                "FROM mart.v_public_data_quality ORDER BY dataset_code LIMIT 2"
+            )
+        except SQLAlchemyError:
+            return []
 
     def _rows(
         self, statement: str, values: dict[str, Any] | None = None
