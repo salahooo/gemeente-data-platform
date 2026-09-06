@@ -1,10 +1,10 @@
-import {act, fireEvent, render, screen, waitFor} from "@testing-library/react";
-import {beforeEach, describe, expect, it, vi} from "vitest";
+import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 
 import {App} from "./App";
-import {api} from "./api";
+import {api, ApiError} from "./api";
 
-vi.mock("./api", () => ({api: {
+vi.mock("./api", async (importOriginal) => ({...await importOriginal<typeof import("./api")>(), api: {
   ready: vi.fn(), years: vi.fn(), national: vi.fn(), ranking: vi.fn(),
   municipalities: vi.fn(), municipality: vi.fn(), population: vi.fn(), lineage: vi.fn(),
 }, publicApiUrl: (path: string) => path}));
@@ -12,7 +12,8 @@ vi.mock("./api", () => ({api: {
 const mockedApi = vi.mocked(api);
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ok: true, json: async () => ({features: []})}));
   window.history.replaceState(null, "", "/");
   mockedApi.ready.mockResolvedValue({status: "ready"});
   mockedApi.years.mockResolvedValue([{year: 2025, has_average_population: true}, {year: 2026, has_average_population: false}]);
@@ -46,7 +47,7 @@ describe("App", () => {
     expect(await screen.findByText("API: Beschikbaar")).toBeInTheDocument();
     expect(screen.getByText("Gemiddelde bevolking voor 2026 ontbreekt; dit is geen nulwaarde.")).toBeInTheDocument();
     expect(screen.getByText("Voorbeeldstad")).toBeInTheDocument();
-    expect(mockedApi.ranking).toHaveBeenCalledWith(2026);
+    expect(mockedApi.ranking).toHaveBeenCalledWith(2026, 500, expect.any(AbortSignal));
   });
 
   it("zoekt en selecteert een gemeente zonder databaseverbinding", async () => {
@@ -55,7 +56,7 @@ describe("App", () => {
     fireEvent.change(screen.getByLabelText("Gemeente"), {target: {value: "Vo"}});
     expect(await screen.findByRole("button", {name: /Voorbeeldstad/})).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", {name: /Voorbeeldstad/}));
-    await waitFor(() => expect(mockedApi.population).toHaveBeenCalledWith("GM0001"));
+    await waitFor(() => expect(mockedApi.population).toHaveBeenCalledWith("GM0001", expect.any(AbortSignal)));
     expect(screen.getByText("Tijdreeks Voorbeeldstad")).toBeInTheDocument();
     await waitFor(() => expect(location.search).toContain("municipality=GM0001"));
   });
@@ -75,11 +76,12 @@ describe("App", () => {
 
   it("kiest standaard het nieuwste beschikbare jaar en werkt de URL bij", async () => {
     render(<App />);
-    const selector = await screen.findByLabelText("Jaar");
+    await screen.findByText("API: Beschikbaar");
+    const selector = screen.getByLabelText("Jaar");
     expect(selector).toHaveValue("2026");
     fireEvent.change(selector, {target: {value: "2025"}});
-    await waitFor(() => expect(mockedApi.ranking).toHaveBeenCalledWith(2025));
-    expect(location.search).toBe("?year=2025");
+    await waitFor(() => expect(mockedApi.ranking).toHaveBeenCalledWith(2025, 500, expect.any(AbortSignal)));
+    await waitFor(() => expect(location.search).toBe("?year=2025"));
   });
 
   it("maakt filters en een geselecteerde tijdreeks weer leeg", async () => {
@@ -92,13 +94,13 @@ describe("App", () => {
     await screen.findByRole("heading", {name: "Jaarlijkse verandering Voorbeeldstad"});
     const rankingCalls = mockedApi.ranking.mock.calls.length;
     fireEvent.click(screen.getByRole("button", {name: "Wis filters"}));
-    await waitFor(() => expect(mockedApi.ranking.mock.calls.length).toBeGreaterThan(rankingCalls));
+    await waitFor(() => expect(mockedApi.ranking.mock.calls.length).toBe(rankingCalls));
     expect(screen.getByText("Selecteer een gemeente")).toBeInTheDocument();
     expect(screen.getByLabelText("Gemeente")).toHaveValue("");
   });
 
   it("toont een veilige foutmelding als de API niet beschikbaar is", async () => {
-    mockedApi.ready.mockRejectedValueOnce(new Error("offline"));
+    mockedApi.ready.mockRejectedValueOnce(new ApiError(403));
     render(<App />);
     expect(await screen.findByRole("alert")).toHaveTextContent("tijdelijk niet beschikbaar");
     expect(screen.getByText("API: Niet beschikbaar")).toBeInTheDocument();
@@ -110,5 +112,112 @@ describe("App", () => {
     const before = mockedApi.ready.mock.calls.length;
     fireEvent.click(screen.getByRole("button", {name: "Vernieuwen"}));
     await waitFor(() => expect(mockedApi.ready.mock.calls.length).toBeGreaterThan(before));
+  });
+});
+
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+async function fastDashboard() {
+  render(<App />);
+  await act(async () => {});
+  expect(screen.getByRole("button", {name: "Vernieuwen"})).toBeEnabled();
+}
+
+describe("startup and feedback UX", () => {
+  it("shows green copy success, deduplicates clicks and clears it after three seconds", async () => {
+    vi.useFakeTimers();
+    const copy = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", {clipboard: {writeText: copy}});
+    await fastDashboard();
+    const button = screen.getByRole("button", {name: "Deel weergave"});
+    await act(async () => { fireEvent.click(button); fireEvent.click(button); });
+    const feedback = screen.getByText("Weergavelink gekopieerd.").closest("[role]");
+    expect(feedback).toHaveAttribute("role", "status");
+    expect(feedback).toHaveClass("feedback-success");
+    expect(screen.getByRole("button", {name: "✓ Link gekopieerd"})).toBeInTheDocument();
+    expect(copy).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByText("Weergavelink gekopieerd.")).toHaveLength(1);
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    expect(screen.queryByText("Weergavelink gekopieerd.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", {name: "Deel weergave"})).toBeInTheDocument();
+  });
+  it("shows assertive red feedback only when clipboard and fallback both fail", async () => {
+    vi.stubGlobal("navigator", {clipboard: {writeText: vi.fn().mockRejectedValue(new Error("denied"))}});
+    Object.defineProperty(document, "execCommand", {configurable: true, value: vi.fn().mockReturnValue(false)});
+    await fastDashboard();
+    await act(async () => { fireEvent.click(screen.getByRole("button", {name: "Deel weergave"})); });
+    expect(screen.getByRole("alert")).toHaveClass("feedback-error");
+    expect(screen.getByRole("alert")).toHaveAttribute("aria-live", "assertive");
+    expect(document.querySelector(".clipboard-fallback")).toBeNull();
+  });
+  it("uses successful clipboard fallback without a red message", async () => {
+    vi.stubGlobal("navigator", {});
+    Object.defineProperty(document, "execCommand", {configurable: true, value: vi.fn().mockReturnValue(true)});
+    await fastDashboard();
+    await act(async () => { fireEvent.click(screen.getByRole("button", {name: "Deel weergave"})); });
+    expect(screen.getByText("Weergavelink gekopieerd.").closest("[role]")).toHaveClass("feedback-success");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+  it("gives green CSV feedback", async () => {
+    vi.stubGlobal("URL", Object.assign(URL, {createObjectURL: vi.fn().mockReturnValue("blob:download"), revokeObjectURL: vi.fn()}));
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    await fastDashboard();
+    fireEvent.click(screen.getByRole("button", {name: "Download CSV"}));
+    expect(screen.getByText("CSV gedownload.").closest("[role]")).toHaveClass("feedback-success");
+  });
+  it("loads once on a fast start with no cold-start warning", async () => {
+    await fastDashboard();
+    expect(mockedApi.ready).toHaveBeenCalledTimes(1);
+    expect(mockedApi.years).toHaveBeenCalledTimes(1);
+    expect(mockedApi.ranking).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/De gratis API wordt/)).toBeNull();
+  });
+  it("shows skeletons then amber after five seconds, recovers once and removes the warning", async () => {
+    vi.useFakeTimers(); mockedApi.ready.mockRejectedValueOnce(new ApiError(503));
+    render(<App />);
+    expect(screen.getByLabelText("Dashboard laden")).toHaveAttribute("aria-busy", "true");
+    await act(async () => { await vi.advanceTimersByTimeAsync(4999); });
+    expect(screen.queryByText(/De gratis API wordt/)).toBeNull();
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    expect(screen.getByText(/De gratis API wordt/).closest("[role]")).toHaveClass("feedback-warning");
+    expect(screen.getByText("Poging 1 van 7")).toBeInTheDocument();
+    expect(screen.getByText("API: Opstarten…")).toHaveClass("starting");
+    expect(mockedApi.years).not.toHaveBeenCalled();
+    await act(async () => { await vi.advanceTimersByTimeAsync(7000); });
+    expect(screen.getByText("API: Beschikbaar")).toBeInTheDocument();
+    expect(screen.queryByText(/De gratis API wordt/)).toBeNull();
+    expect(mockedApi.years).toHaveBeenCalledTimes(1);
+  });
+  it("exhausts retries, shows red and enables an explicit new attempt", async () => {
+    vi.useFakeTimers(); mockedApi.ready.mockRejectedValue(new ApiError(503));
+    render(<App />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(84_000); });
+    expect(mockedApi.ready).toHaveBeenCalledTimes(7);
+    expect(screen.getByRole("alert")).toHaveClass("feedback-error");
+    mockedApi.ready.mockResolvedValue({status: "ready"});
+    await act(async () => { fireEvent.click(screen.getByRole("button", {name: "Opnieuw proberen"})); });
+    expect(screen.getByText("API: Beschikbaar")).toBeInTheDocument();
+  });
+  it("retains the old snapshot on refresh failure and blocks repeated refresh clicks", async () => {
+    vi.useFakeTimers(); await fastDashboard();
+    const before = screen.getByLabelText("Kerncijfers").textContent;
+    mockedApi.national.mockResolvedValueOnce([{year: 2026, population_january_1: 123, municipality_count: 1, average_population: null, missing_average_population_count: 1}]);
+    mockedApi.ranking.mockRejectedValueOnce(new ApiError(503));
+    const button = screen.getByRole("button", {name: "Vernieuwen"});
+    await act(async () => { fireEvent.click(button); fireEvent.click(button); });
+    expect(screen.getByLabelText("Kerncijfers").textContent).toBe(before);
+    expect(screen.getByRole("button", {name: "Bezig met laden…"})).toBeDisabled();
+    await act(async () => { await vi.advanceTimersByTimeAsync(12_000); });
+    expect(screen.getByText("API: Beschikbaar")).toBeInTheDocument();
+    expect(mockedApi.ready).toHaveBeenCalledTimes(3);
+  });
+  it("cleans up startup timers on unmount", async () => {
+    vi.useFakeTimers(); mockedApi.ready.mockRejectedValue(new ApiError(503));
+    const view = render(<App />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+    view.unmount();
+    await act(async () => {});
+    expect(vi.getTimerCount()).toBe(0);
+    expect(mockedApi.years).not.toHaveBeenCalled();
   });
 });
