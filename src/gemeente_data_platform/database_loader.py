@@ -68,7 +68,7 @@ def load_snapshot(
         revision = connection.execute(
             text("SELECT version_num FROM public.alembic_version")
         ).scalar_one_or_none()
-    if revision != "20260905_01":
+    if revision != "20260906_01":
         raise ValueError("Database migration revision is not at the required head.")
     if dry_run:
         return "dry-run"
