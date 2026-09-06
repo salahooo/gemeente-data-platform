@@ -5,7 +5,7 @@ import {App} from "./App";
 import {api, ApiError} from "./api";
 
 vi.mock("./api", async (importOriginal) => ({...await importOriginal<typeof import("./api")>(), api: {
-  ready: vi.fn(), years: vi.fn(), national: vi.fn(), ranking: vi.fn(),
+  profile: vi.fn(), dataQuality: vi.fn(), ready: vi.fn(), years: vi.fn(), national: vi.fn(), ranking: vi.fn(),
   municipalities: vi.fn(), municipality: vi.fn(), population: vi.fn(), lineage: vi.fn(),
 }, publicApiUrl: (path: string) => path}));
 
@@ -15,6 +15,8 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ok: true, json: async () => ({features: []})}));
   window.history.replaceState(null, "", "/");
+  mockedApi.profile.mockResolvedValue({municipality_code: "GM0001", year: 2026, dataset_code: "70072ned", categories: []});
+  mockedApi.dataQuality.mockResolvedValue([]);
   mockedApi.ready.mockResolvedValue({status: "ready"});
   mockedApi.years.mockResolvedValue([{year: 2025, has_average_population: true}, {year: 2026, has_average_population: false}]);
   mockedApi.national.mockResolvedValue([
@@ -194,7 +196,9 @@ describe("startup and feedback UX", () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(84_000); });
     expect(mockedApi.ready).toHaveBeenCalledTimes(7);
     expect(screen.getByRole("alert")).toHaveClass("feedback-error");
-    mockedApi.ready.mockResolvedValue({status: "ready"});
+    mockedApi.profile.mockResolvedValue({municipality_code: "GM0001", year: 2026, dataset_code: "70072ned", categories: []});
+  mockedApi.dataQuality.mockResolvedValue([]);
+  mockedApi.ready.mockResolvedValue({status: "ready"});
     await act(async () => { fireEvent.click(screen.getByRole("button", {name: "Opnieuw proberen"})); });
     expect(screen.getByText("API: Beschikbaar")).toBeInTheDocument();
   });

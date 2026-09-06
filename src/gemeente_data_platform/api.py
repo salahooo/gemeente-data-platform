@@ -16,9 +16,11 @@ from gemeente_data_platform.api_models import (
     ErrorResponse,
     HealthResponse,
     MunicipalityPage,
+    MunicipalityProfile,
     MunicipalityResponse,
     NationalPopulation,
     PopulationSeries,
+    PublicQuality,
     RankingItem,
     ReadyResponse,
     YearResponse,
@@ -199,6 +201,31 @@ def create_app(
     def latest_lineage(repo: MartRepository = Depends(get_repository)):
         """Expose only the latest successful load's public-safe identifiers."""
         return repo.latest_lineage()
+
+    @app.get(
+        "/api/v1/municipalities/{municipality_code}/profile",
+        response_model=MunicipalityProfile,
+        tags=["analytics"],
+    )
+    def profile(
+        municipality_code: str,
+        year: int = Query(..., ge=1995, le=2200),
+        repo: MartRepository = Depends(get_repository),
+    ):
+        import re
+
+        code = municipality_code.upper()
+        if not re.fullmatch(r"GM\d{4}", code):
+            raise HTTPException(status_code=422, detail="invalid municipality code")
+        return MunicipalityProfile(
+            municipality_code=code, year=year, categories=repo.age_profile(code, year)
+        )
+
+    @app.get(
+        "/api/v1/data-quality", response_model=list[PublicQuality], tags=["analytics"]
+    )
+    def data_quality(repo: MartRepository = Depends(get_repository)):
+        return repo.data_quality()
 
     return app
 

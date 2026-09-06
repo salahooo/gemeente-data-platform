@@ -8,6 +8,7 @@ import {annualChanges} from "./changes";
 import {number, percent} from "./format";
 import {LINKEDIN_URL} from "./portfolio";
 import {SocialLink} from "./SocialLink";
+import {AgeProfile, QualityMonitor} from "./MunicipalityProfile";
 import {MunicipalityMap} from "./MunicipalityMap";
 import {csvDocument, indexedSeries} from "./dashboardTools";
 import type {Lineage, Municipality, National, Observation, Ranking, Year} from "./types";
@@ -36,6 +37,7 @@ export function App() {
   const setError = useCallback((text: string) => { if (text) notify("error", text); else clear(); }, [notify, clear]);
   const [busy, setBusy] = useState(true);
   const [loaded, setLoaded] = useState(false);
+  const [revision, setRevision] = useState(0);
   const [warming, setWarming] = useState(false);
   const [attempt, setAttempt] = useState(1);
   const activeLoad = useRef<AbortController | null>(null);
@@ -112,7 +114,7 @@ export function App() {
       setYear(snapshot.selectedYear); setFullRanking(snapshot.allRanks); setRanking(snapshot.allRanks.slice(0, 10));
       if (snapshot.primary) { setSelected(snapshot.primary.municipality); setSearch(snapshot.primary.municipality.municipality_name); setSeries(snapshot.primary.observations); }
       if (snapshot.secondary) { setComparison(snapshot.secondary.municipality); setCompareSearch(snapshot.secondary.municipality.municipality_name); setComparisonSeries(snapshot.secondary.observations); }
-      setLoaded(true); setStatus("Beschikbaar"); setWarming(false);
+      setLoaded(true); setRevision((value) => value + 1); setStatus("Beschikbaar"); setWarming(false);
     } catch {
       if (!controller.signal.aborted) { setStatus("Niet beschikbaar"); setWarming(false); setError("De gegevens zijn tijdelijk niet beschikbaar. Probeer het later opnieuw."); }
     } finally {
@@ -172,10 +174,10 @@ export function App() {
     {!loaded ? busy ? <DashboardSkeleton /> : <Feedback kind="info">Er zijn nog geen dashboardgegevens geladen.</Feedback> : <>
     {current?.average_population === null && <Feedback kind="warning">Gemiddelde bevolking voor {year} ontbreekt; dit is geen nulwaarde.</Feedback>}
     <section className="kpis" aria-label="Kerncijfers"><Card title="Nederlandse bevolking" value={number(current?.population_january_1 ?? null)} /><Card title="Gemeenten met waarneming" value={number(current?.municipality_count ?? null)} /><Card title="Verandering t.o.v. vorig jaar" value={number(nationalChange)} /><Card title="Procentuele verandering" value={previous && nationalChange !== null && previous.population_january_1 ? percent(String(nationalChange / previous.population_january_1 * 100)) : "Niet beschikbaar"} /></section>
-    <section className="grid" id="nederland" aria-label="Bevolkingsanalyses" aria-busy={status === "Laden"}><Chart title="Nationale bevolkingstrend" data={national} dataKey="population_january_1" xKey="year" /><Chart title="Top 10 gemeenten" data={ranking} dataKey="population_january_1" xKey="municipality_name" bar /><RankingTable ranking={ranking} year={year} /><Chart title="Jaarlijkse verandering Nederland" data={annualChanges(national)} dataKey="change" xKey="year" bar />{selected ? <><MunicipalityKpis municipality={selected} observation={selectedObservation} change={selectedChange} rank={selectedRank} /><Chart title={`Tijdreeks ${selected.municipality_name}`} data={series} dataKey="population_january_1" xKey="year" /><Chart title={`Jaarlijkse verandering ${selected.municipality_name}`} data={annualChanges(series)} dataKey="change" xKey="year" bar /><ComparisonPanel selected={selected} comparison={comparison} series={series} comparisonSeries={comparisonSeries} search={compareSearch} items={compareItems} onSearch={setCompareSearch} onSelect={selectComparison} onClear={() => { setCompareSearch(""); setComparison(null); setComparisonSeries([]); }} /></> : <SelectionCard />}</section>
-    <MunicipalityMap year={year} ranking={fullRanking} selectedCode={selected?.municipality_code} onSelect={(item) => void select(item)} />
+    <section className="grid" id="nederland" aria-label="Bevolkingsanalyses" aria-busy={status === "Laden"}><Chart title="Nationale bevolkingstrend" data={national} dataKey="population_january_1" xKey="year" /><Chart title="Top 10 gemeenten" data={ranking} dataKey="population_january_1" xKey="municipality_name" bar /><RankingTable ranking={ranking} year={year} /><Chart title="Jaarlijkse verandering Nederland" data={annualChanges(national)} dataKey="change" xKey="year" bar />{selected ? <><Chart title={`Tijdreeks ${selected.municipality_name}`} data={series} dataKey="population_january_1" xKey="year" /><Chart title={`Jaarlijkse verandering ${selected.municipality_name}`} data={annualChanges(series)} dataKey="change" xKey="year" bar /><ComparisonPanel selected={selected} comparison={comparison} series={series} comparisonSeries={comparisonSeries} search={compareSearch} items={compareItems} onSearch={setCompareSearch} onSelect={selectComparison} onClear={() => { setCompareSearch(""); setComparison(null); setComparisonSeries([]); }} /></> : <SelectionCard />}</section>
+    <div className="municipality-explorer"><MunicipalityMap year={year} ranking={fullRanking} selectedCode={selected?.municipality_code} selectedGrowth={selectedChange} onSelect={(item) => void select(item)} />{selected && <section className="card municipality-profile" id="gemeente" aria-labelledby="profile-heading"><h2 id="profile-heading">Gemeenteprofiel</h2><p>{selected.municipality_name} · {year}</p><MunicipalityKpis municipality={selected} observation={selectedObservation} change={selectedChange} rank={selectedRank} /><AgeProfile code={selected.municipality_code} year={year} revision={revision} /></section>}</div>
     {selected && comparison && <IndexComparison first={selected} second={comparison} firstSeries={series} secondSeries={comparisonSeries} />}
-    <LineageSummary years={years} lineage={lineage} />
+    <QualityMonitor revision={revision} /><LineageSummary years={years} lineage={lineage} />
     </>}
     <footer><div><p className="eyebrow">Van bron tot inzicht</p><h2>Ontwikkeld door Salah Abdulkader</h2><p className="provenance">Een end-to-end portfolio-dataplatform op basis van CBS Open Data. Historische herindelingen kunnen tijdreeksen beïnvloeden.</p></div><div><nav aria-label="Portfolio en documentatie"><SocialLink href="https://github.com/salahooo" label="GitHub-profiel" brand="github" /><SocialLink href="https://github.com/salahooo/gemeente-data-platform" label="Broncode" brand="github" repository /><SocialLink href={LINKEDIN_URL} label="LinkedIn" brand="linkedin" /><a href={publicApiUrl("/docs")} target="_blank" rel="noopener noreferrer">API-documentatie</a></nav><p className="technology">Python · PostgreSQL · FastAPI · React · TypeScript · Docker · GitHub Actions</p></div></footer>
   </main>;

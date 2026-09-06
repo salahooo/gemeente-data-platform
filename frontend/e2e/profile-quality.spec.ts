@@ -1,0 +1,44 @@
+﻿import {expect, test} from "@playwright/test";
+
+test("municipality profile, safe quality, keyboard map and shared state on desktop/mobile", async ({page}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
+  await page.route("**/ready", (route) => route.fulfill({json: {status: "ready"}}));
+  const municipality = {municipality_code: "GM0363", municipality_name: "Amsterdam", first_observed_year: 2025, last_observed_year: 2026, active_in_latest_period: true};
+  await page.route("**/api/v1/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    let json: unknown = null;
+    if (path.endsWith("/years")) json = [{year: 2025, has_average_population: true}, {year: 2026, has_average_population: false}];
+    else if (path.endsWith("/data-quality")) json = [{dataset_code: "70072ned", dataset_name: "Leeftijdsopbouw", source: "CBS Open Data", first_year: 2025, last_year: 2026, completed_at: null, record_count: 3420, validation_status: "validated", missing_values: 0, warning: "Peildatum: 1 januari."}];
+    else if (path.includes("/national/")) json = [{year: 2026, municipality_count: 342, population_january_1: 18_100_000, average_population: null, missing_average_population_count: 342}];
+    else if (path.includes("/rankings/")) json = [{rank: 1, ...municipality, population_january_1: 941927}];
+    else if (path.endsWith("/profile")) json = {municipality_code: "GM0363", year: 2026, dataset_code: "70072ned", categories: ["0-14", "15-24", "25-44", "45-64", "65+"].map((category) => ({category, population: 100, share_percent: "20.0", national_share_percent: "20.0"}))};
+    else if (path.endsWith("/population")) json = {observations: [{year: 2025, population_january_1: 900000, average_population: null, population_change_percent: null}, {year: 2026, population_january_1: 941927, average_population: null, population_change_percent: "4.7"}]};
+    else if (path.endsWith("/GM0363")) json = municipality;
+    return route.fulfill({json});
+  });
+  await page.setViewportSize({width: 1440, height: 1000});
+  await page.goto("/");
+  await expect(page.getByRole("button", {name: "Vernieuwen"})).toBeEnabled();
+  const area = page.getByRole("img", {name: /Kaart met inwonertal/}).getByRole("button", {name: /^Amsterdam/}).first();
+  await area.focus();
+  await area.press("Space");
+  await expect(page.getByRole("heading", {name: "Gemeenteprofiel", exact: true})).toBeVisible();
+  await expect(page).toHaveURL(/municipality=GM0363/);
+  await expect(area).toHaveClass("map-selected");
+  await expect(page.getByRole("table", {name: /Leeftijdsopbouw/})).toBeVisible();
+  await expect(page.getByText("✓ Gevalideerd")).toBeVisible();
+  await expect(page.getByText("Groei: 41.927")).toBeVisible();
+  await page.screenshot({path: "test-results/profile-desktop.png", fullPage: true});
+  await page.reload();
+  await expect(page.getByRole("table", {name: /Leeftijdsopbouw/})).toBeVisible();
+  await expect(area).toHaveClass("map-selected");
+  await page.setViewportSize({width: 390, height: 844});
+  await area.focus(); await area.press("Enter");
+  await page.getByRole("link", {name: "Bekijk gemeenteprofiel"}).click();
+  await expect(page.getByRole("heading", {name: "Gemeenteprofiel", exact: true})).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({path: "test-results/profile-mobile.png", fullPage: true});
+  expect(errors).toEqual([]);
+});

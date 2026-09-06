@@ -1,4 +1,4 @@
-import type {Lineage, Municipality, National, Observation, Ranking, Year} from "./types";
+import type {AgeProfileData, DataQuality, Lineage, Municipality, National, Observation, Ranking, Year} from "./types";
 
 const timeout = 8000;
 
@@ -42,6 +42,8 @@ async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
 }
 
 export const api = {
+  profile: (code: string, year: number, signal?: AbortSignal) => get<AgeProfileData>(`/api/v1/municipalities/${code}/profile?year=${year}`, signal),
+  dataQuality: (signal?: AbortSignal) => get<DataQuality[]>("/api/v1/data-quality", signal),
   ready: async (signal?: AbortSignal) => { const result = await get<{status: string}>("/ready", signal); if (result.status !== "ready") throw new ApiError(503); return result; },
   years: (signal?: AbortSignal) => get<Year[]>("/api/v1/years", signal),
   national: (signal?: AbortSignal) => get<National[]>("/api/v1/national/population", signal),
