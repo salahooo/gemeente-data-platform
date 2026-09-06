@@ -43,6 +43,19 @@ export function SectionNavigation({ready}: {ready: boolean}) {
   const {navigate} = useContext(Navigation);
   const sentinel = useRef<HTMLSpanElement>(null);
   const [pastTop, setPastTop] = useState(false);
+  const [active, setActive] = useState("overzicht");
+  useEffect(() => {
+    if (!ready || !window.IntersectionObserver) return;
+    const observer = new IntersectionObserver((entries) => {
+      const entered = entries.filter((entry) => entry.isIntersecting).at(-1);
+      if (entered) setActive(entered.target.id);
+    }, {rootMargin: "-76px 0px -65% 0px", threshold: 0});
+    for (const [id] of sections) {
+      const element = document.getElementById(id);
+      if (element) observer.observe(element);
+    }
+    return () => observer.disconnect();
+  }, [ready]);
   useEffect(() => {
     if (!window.IntersectionObserver || !sentinel.current) return;
     const observer = new IntersectionObserver(([entry]) => setPastTop(!entry.isIntersecting && entry.boundingClientRect.top < 0));
@@ -54,5 +67,5 @@ export function SectionNavigation({ready}: {ready: boolean}) {
     // Restore a shared anchor only after its content has mounted.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
-  return <><span className="top-sentinel" ref={sentinel} aria-hidden="true" /><nav className="section-nav" aria-label="Secties">{sections.map(([id, label]) => <a key={id} href={`#${id}`} onClick={(event) => {event.preventDefault(); navigate(id);}}>{label}</a>)}</nav>{pastTop && <button className="back-to-top" onClick={() => {window.scrollTo({top: 0, behavior: behavior()}); document.querySelector<HTMLElement>("h1")?.focus({preventScroll: true});}}>↑ Naar boven</button>}</>;
+  return <><span className="top-sentinel" ref={sentinel} aria-hidden="true" /><nav className="section-nav" aria-label="Secties">{sections.map(([id, label]) => <a key={id} aria-current={active === id ? "location" : undefined} href={`#${id}`} onClick={(event) => {event.preventDefault(); setActive(id); navigate(id);}}>{label}</a>)}</nav>{pastTop && <button className="back-to-top" onClick={() => {window.scrollTo({top: 0, behavior: behavior()}); document.querySelector<HTMLElement>("h1")?.focus({preventScroll: true});}}>↑ Naar boven</button>}</>;
 }
