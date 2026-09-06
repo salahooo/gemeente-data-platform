@@ -6,7 +6,7 @@ Een controleerbaar data-platform voor gemeentelijke bevolkingsinformatie: van of
 
 [Live dashboard](https://gemeente-data-platform-dashboard.onrender.com) · [Publieke API-docs](https://gemeente-data-platform-api.onrender.com/docs) · [GitHub-profiel](https://github.com/salahooo) · [LinkedIn](https://www.linkedin.com/in/salah-abdulkader/)
 
-![Dashboard met echte, lokaal gevalideerde API-data](docs/images/dashboard-desktop.png)
+![Actuele desktopweergave met vaste demonstratiedata uit de frontend-smoke](docs/images/dashboard-desktop.png)
 
 [Dashboard bekijken](docs/dashboard.md) · [API-documentatie](docs/api.md) · [Portfolio-walkthrough](docs/portfolio-walkthrough.md)
 
@@ -16,10 +16,8 @@ Open overheidsdata is pas bruikbaar wanneer herkomst, kwaliteit en interpretatie
 
 ```mermaid
 flowchart LR
-  CBS[CBS OData] --> RAW[Raw: manifest + checksums] --> PROC[Processed: Parquet/CSV]
-  PROC --> DB[PostgreSQL core + mart] --> API[FastAPI read-only] --> UI[React dashboard]
-  ORCH[Pipeline state machine] -. lineage .-> RAW
-  CI[Tests + GitHub Actions] -. quality .-> API
+  CBS[CBS Open Data] --> ETL[Extractie en validatie] --> DB[PostgreSQL]
+  DB --> MART[Mart-views] --> API[FastAPI] --> UI[React-dashboard]
 ```
 
 ## Aantoonbare resultaten
@@ -56,6 +54,13 @@ Dit portfolio-project demonstreert end-to-end data-engineering: Python en SQL, d
 ## Kwaliteit en veilige deployment
 
 Datacontracten en checksums maken ETL-runs reproduceerbaar en herleidbaar; validatie gaat vooraf aan atomaire loads. PostgreSQL-rollen hebben minimale rechten en de publieke API is read-only. Secrets blijven buiten Git. GitHub Actions controleert wijzigingen vóór integratie; deployment en rollback zijn beschreven in het runbook. Het dashboard toont ontbrekende waarden als onbekend en maakt historische herindelingen expliciet.
+
+Enkele technische keuzes:
+
+- Transactionele loads laten bestaande productiedata intact wanneer een dataset ongeldig is; lineage koppelt publicaties aan hun verwerkingsrun.
+- Grote GeoJSON-geometrieën worden iteratief verwerkt, zonder spread-argumenten die een stack overflow kunnen veroorzaken.
+- Ontbrekende waarden blijven `null`; de interface vangt Render cold-starts op met laadfeedback en begrensde herhaalpogingen.
+- Docker en GitHub Actions ondersteunen reproduceerbare CI/CD. Cloudbootstrap is een expliciete beheerstap, gescheiden van de read-only publieke runtime; zie [clouddeployment](docs/deployment.md).
 
 Bronnen: CBS **03759ned** (bevolking), **70072ned** (leeftijdsopbouw) en CBS/PDOK-gemeentegrenzen 2026. Bevolking en leeftijd gebruiken 1 januari als peildatum. Zie het [gemeenteprofiel en de kwaliteitsmonitor](docs/municipality-profile.md) voor dekking en interpretatie.
 

@@ -5,7 +5,7 @@ test("navigation polish, single comparison and shared state on desktop/mobile", 
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
   await page.route("**/ready", (route) => route.fulfill({json: {status: "ready"}}));
-  const municipality = {municipality_code: "GM0363", municipality_name: "Amsterdam", first_observed_year: 2025, last_observed_year: 2026, active_in_latest_period: true};
+  const municipality = {municipality_code: "GM0363", municipality_name: "Amsterdam (gemeente)", first_observed_year: 2025, last_observed_year: 2026, active_in_latest_period: true};
   await page.route("**/api/v1/**", (route) => {
     const path = new URL(route.request().url()).pathname;
     let json: unknown = null;
@@ -15,8 +15,9 @@ test("navigation polish, single comparison and shared state on desktop/mobile", 
     else if (path.includes("/rankings/")) json = [{rank: 1, ...municipality, population_january_1: 941927}];
     else if (path.endsWith("/profile")) json = {municipality_code: "GM0363", year: 2026, dataset_code: "70072ned", categories: ["0-14", "15-24", "25-44", "45-64", "65+"].map((category) => ({category, population: 100, share_percent: "20.0", national_share_percent: "20.0"}))};
     else if (path.endsWith("/population")) json = {observations: [{year: 2025, population_january_1: 900000, average_population: null, population_change_percent: null}, {year: 2026, population_january_1: 941927, average_population: null, population_change_percent: "4.7"}]};
-    else if (path.endsWith("/GM0599")) json = {...municipality, municipality_code: "GM0599", municipality_name: "Rotterdam"};
+    else if (path.endsWith("/GM0599")) json = {...municipality, municipality_code: "GM0599", municipality_name: "Rotterdam (gemeente)"};
     else if (path.endsWith("/GM0363")) json = municipality;
+    else if (path.endsWith("/municipalities")) json = {items: [municipality]};
     return route.fulfill({json});
   });
   await page.emulateMedia({reducedMotion: "reduce"});
@@ -34,16 +35,27 @@ test("navigation polish, single comparison and shared state on desktop/mobile", 
   await expect(page.getByText("Groei: 41.927")).toBeVisible();
   await expect(page.getByRole("img", {name: "Vergelijking geselecteerde gemeenten"})).toHaveCount(1);
   await expect(page.getByLabel("Vergelijkingsweergave")).toHaveValue("index");
+  const comparisonBox = await page.locator("#vergelijken").boundingBox();
+  const gridBox = await page.locator("#nederland").boundingBox();
+  expect(Math.abs(comparisonBox!.width - gridBox!.width)).toBeLessThan(2);
+  expect(await page.locator("body").innerText()).not.toContain(" (gemeente)");
+  await expect(page.getByLabel("Gemeente", {exact: true})).toHaveValue("Amsterdam");
+  await page.getByLabel("Gemeente", {exact: true}).fill("Ams");
+  await page.getByRole("list", {name: "Gemeente zoekresultaten", exact: true}).getByRole("button", {name: "Amsterdam GM0363", exact: true}).click();
+  await expect(page.getByLabel("Gemeente", {exact: true})).toHaveValue("Amsterdam");
+  await expect(page).toHaveURL(/municipality=GM0363/);
   await page.getByLabel("Vergelijkingsweergave").selectOption("absolute");
   await expect(page).not.toHaveURL(/compare_mode/);
   await page.getByLabel("Vergelijkingsweergave").selectOption("index");
   await page.getByRole("navigation", {name: "Secties", exact: true}).getByRole("link", {name: "Bron en techniek"}).click();
   await expect(page.locator("#bron-heading")).toBeInViewport();
+  await expect(page.getByRole("navigation", {name: "Secties", exact: true}).getByRole("link", {name: "Bron en techniek"})).toHaveAttribute("aria-current", "location");
   expect(await page.locator(".section-nav").evaluate((el) => Math.abs(el.getBoundingClientRect().top))).toBeLessThan(2);
   await expect(page.getByRole("button", {name: "Naar boven"})).toBeVisible();
   await page.getByRole("button", {name: "Naar boven"}).click();
   await expect(page.getByRole("heading", {level: 1})).toBeInViewport();
   await expect(page.getByRole("button", {name: "Naar boven"})).toHaveCount(0);
+  await page.screenshot({path: "../docs/images/dashboard-desktop.png", fullPage: true});
   await page.reload();
   await expect(page.getByRole("table", {name: /Leeftijdsopbouw/})).toBeVisible();
   await expect(area).toHaveClass("map-selected");
