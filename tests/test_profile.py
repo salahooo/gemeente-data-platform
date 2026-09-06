@@ -64,6 +64,12 @@ def test_transform_reproducible_null_preserving_and_exact_categories(tmp_path):
     assert read_run(profile_run(tmp_path, records))["rows"] == rows
 
 
+def test_retired_all_null_regions_are_absent_not_zero_observations():
+    records = source_records()
+    records.append(dict(zip(COLUMNS, ["GM0003", "2026JJ00"] + [None] * 7)))
+    assert transform(records, [2026]) == transform(source_records(), [2026])
+
+
 @pytest.mark.parametrize(
     "change",
     ["duplicate", "negative", "missing-column", "region", "period", "total", "small"],

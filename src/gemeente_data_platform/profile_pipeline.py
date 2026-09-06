@@ -52,6 +52,7 @@ def transform(records: list[dict], years: list[int]) -> list[dict]:
         raise ValueError("Invalid reporting years.")
     rows = []
     seen = set()
+    observed = set()
     for record in records:
         if not set(COLUMNS) <= record.keys():
             raise ValueError("Expected CBS columns are missing.")
@@ -67,6 +68,11 @@ def transform(records: list[dict], years: list[int]) -> list[dict]:
         seen.add((code, year))
         total = count(record["TotaleBevolking_1"])
         values = [count(record[field]) for field in COLUMNS[3:]]
+        # CBS includes retired municipalities with all-null values in later years.
+        # These are absent observations, not zero-population municipalities.
+        if total is None and all(value is None for value in values):
+            continue
+        observed.add((code, year))
         if all(value is not None for value in values) and total is not None:
             if sum(values) != total:
                 raise ValueError("Age groups do not reconcile to source total.")
@@ -86,7 +92,7 @@ def transform(records: list[dict], years: list[int]) -> list[dict]:
                 )
             )
     for year in years:
-        regions = {code for code, row_year in seen if row_year == year}
+        regions = {code for code, row_year in observed if row_year == year}
         if "NL01" not in regions or not 251 <= len(regions) <= 1001:
             raise ValueError("Incomplete or implausible annual snapshot.")
     return sorted(
