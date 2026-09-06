@@ -1,6 +1,6 @@
 ﻿import {expect, test} from "@playwright/test";
 
-test("municipality profile, safe quality, keyboard map and shared state on desktop/mobile", async ({page}) => {
+test("navigation polish, single comparison and shared state on desktop/mobile", async ({page}) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
@@ -15,11 +15,13 @@ test("municipality profile, safe quality, keyboard map and shared state on deskt
     else if (path.includes("/rankings/")) json = [{rank: 1, ...municipality, population_january_1: 941927}];
     else if (path.endsWith("/profile")) json = {municipality_code: "GM0363", year: 2026, dataset_code: "70072ned", categories: ["0-14", "15-24", "25-44", "45-64", "65+"].map((category) => ({category, population: 100, share_percent: "20.0", national_share_percent: "20.0"}))};
     else if (path.endsWith("/population")) json = {observations: [{year: 2025, population_january_1: 900000, average_population: null, population_change_percent: null}, {year: 2026, population_january_1: 941927, average_population: null, population_change_percent: "4.7"}]};
+    else if (path.endsWith("/GM0599")) json = {...municipality, municipality_code: "GM0599", municipality_name: "Rotterdam"};
     else if (path.endsWith("/GM0363")) json = municipality;
     return route.fulfill({json});
   });
+  await page.emulateMedia({reducedMotion: "reduce"});
   await page.setViewportSize({width: 1440, height: 1000});
-  await page.goto("/");
+  await page.goto("/?year=2026&municipality=GM0363&compare=GM0599&compare_mode=index");
   await expect(page.getByRole("button", {name: "Vernieuwen"})).toBeEnabled();
   const area = page.getByRole("img", {name: /Kaart met inwonertal/}).getByRole("button", {name: /^Amsterdam/}).first();
   await area.focus();
@@ -30,15 +32,41 @@ test("municipality profile, safe quality, keyboard map and shared state on deskt
   await expect(page.getByRole("table", {name: /Leeftijdsopbouw/})).toBeVisible();
   await expect(page.getByText("✓ Gevalideerd")).toBeVisible();
   await expect(page.getByText("Groei: 41.927")).toBeVisible();
-  await page.screenshot({path: "test-results/profile-desktop.png", fullPage: true});
+  await expect(page.getByRole("img", {name: "Vergelijking geselecteerde gemeenten"})).toHaveCount(1);
+  await expect(page.getByLabel("Vergelijkingsweergave")).toHaveValue("index");
+  await page.getByLabel("Vergelijkingsweergave").selectOption("absolute");
+  await expect(page).not.toHaveURL(/compare_mode/);
+  await page.getByLabel("Vergelijkingsweergave").selectOption("index");
+  await page.getByRole("navigation", {name: "Secties", exact: true}).getByRole("link", {name: "Bron en techniek"}).click();
+  await expect(page.locator("#bron-heading")).toBeInViewport();
+  expect(await page.locator(".section-nav").evaluate((el) => Math.abs(el.getBoundingClientRect().top))).toBeLessThan(2);
+  await expect(page.getByRole("button", {name: "Naar boven"})).toBeVisible();
+  await page.getByRole("button", {name: "Naar boven"}).click();
+  await expect(page.getByRole("heading", {level: 1})).toBeInViewport();
+  await expect(page.getByRole("button", {name: "Naar boven"})).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole("table", {name: /Leeftijdsopbouw/})).toBeVisible();
   await expect(area).toHaveClass("map-selected");
   await page.setViewportSize({width: 390, height: 844});
-  await area.focus(); await area.press("Enter");
+  const nav = page.getByRole("navigation", {name: "Secties", exact: true});
+  await expect(page.getByRole("button", {name: "Gemeentekaart", exact: true})).toHaveAttribute("aria-expanded", "false");
+  await nav.getByRole("link", {name: "Kaart", exact: true}).click();
+  await expect(page.getByRole("button", {name: "Gemeentekaart", exact: true})).toHaveAttribute("aria-expanded", "true");
+  await expect(area).toHaveClass("map-selected");
   await page.getByRole("link", {name: "Bekijk gemeenteprofiel"}).click();
   await expect(page.getByRole("heading", {name: "Gemeenteprofiel", exact: true})).toBeInViewport();
+  await nav.getByRole("link", {name: "Vergelijken", exact: true}).click();
+  await expect(page.getByLabel("Vergelijkingsweergave")).toHaveValue("index");
+  await expect(page.getByRole("img", {name: "Vergelijking geselecteerde gemeenten"})).toHaveCount(1);
+  await page.getByRole("button", {name: "Vergelijk gemeenten", exact: true}).click();
+  await expect(page.getByLabel("Vergelijkingsweergave")).toBeHidden();
+  await nav.getByRole("link", {name: "Vergelijken", exact: true}).click();
+  await expect(page.getByLabel("Vergelijkingsweergave")).toBeVisible();
+  await expect(page).toHaveURL(/compare=GM0599&compare_mode=index/);
+  await nav.getByRole("link", {name: "Bron en techniek"}).click();
+  await expect(page.locator("#bron-content")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({path: "test-results/profile-mobile.png", fullPage: true});
+  await page.getByRole("button", {name: "Datakwaliteit", exact: true}).click();
+  await expect(page.getByText("✓ Gevalideerd")).toBeVisible();
   expect(errors).toEqual([]);
 });

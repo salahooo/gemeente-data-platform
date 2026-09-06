@@ -1,3 +1,4 @@
+import {CollapsibleSection} from "./DashboardNavigation";
 import {useEffect, useState} from "react";
 import {api} from "./api";
 import {number} from "./format";
@@ -36,7 +37,7 @@ export function QualityMonitor({revision}: {revision: number}) {
     void api.dataQuality(controller.signal).then((data) => { if (!controller.signal.aborted) setDatasets(Array.isArray(data) ? data : []); }).catch(() => {});
     return () => controller.abort();
   }, [revision]);
-  return <section className="quality-monitor" id="bron" aria-labelledby="quality-heading"><h2 id="quality-heading">Datakwaliteit</h2>
+  return <CollapsibleSection className="quality-monitor" id="datakwaliteit" title="Datakwaliteit">
     {!datasets.length ? <p className="profile-unavailable">Publieke kwaliteitsgegevens zijn nog niet beschikbaar.</p> : <div className="quality-cards">{datasets.map((data) => <article className="card" key={data.dataset_code}>
       <h3>{data.dataset_name}</h3><p className="caption">{data.source} · {data.dataset_code}</p>
       <dl><div><dt>Periode</dt><dd>{data.first_year === null ? "Niet beschikbaar" : `${data.first_year}–${data.last_year}`}</dd></div>
@@ -46,5 +47,5 @@ export function QualityMonitor({revision}: {revision: number}) {
         <div><dt>Ontbrekende kernwaarden</dt><dd>{number(data.missing_values)}</dd></div></dl>
       <p className="caption">{data.warning}</p>
     </article>)}</div>}
-  </section>;
+  </CollapsibleSection>;
 }
