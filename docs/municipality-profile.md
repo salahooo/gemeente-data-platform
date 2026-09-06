@@ -8,6 +8,9 @@ blijft ongewijzigd. Dit is leeftijdsopbouw, geen voorspelling of afgeleide claim
 De vijf groepen zijn 0–14, 15–24, 25–44, 45–64 en 65+. De laatste is uitsluitend
 de som van CBS 65–79 en 80+; ontbreekt een deel, dan blijft de som NULL.
 De eerste vier CBS-velden en beide 65+-velden worden expliciet gecontroleerd.
+CBS publiceert ook historische gemeentecodes met uitsluitend NULL-waarden in
+latere jaren. Alleen zulke volledig lege observaties worden overgeslagen;
+gedeeltelijk ontbrekende categorieën blijven expliciet NULL, nooit nul.
 CBS wijzigde de leeftijdsgroepen in juli 2026: een toekomstige schemawijziging
 laat extractie bewust falen. Er wordt niet automatisch op andere indicatoren
 teruggevallen. De CBS-metadatabeschrijving bepaalt voorlopigheid en revisies.
