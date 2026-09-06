@@ -37,11 +37,11 @@ describe("App", () => {
     expect(screen.getByRole("heading", {name: "Jaarlijkse verandering Nederland"})).toBeInTheDocument();
     expect(screen.getByText(/De Y-as gebruikt een dynamisch bereik/)).toBeInTheDocument();
     expect(screen.getByRole("heading", {name: "Ontwikkeld door Salah Abdulkader"})).toBeInTheDocument();
-    expect(screen.getByRole("link", {name: "GitHub-profiel"})).toHaveAttribute("href", "https://github.com/salahooo");
+    expect(screen.getAllByRole("link", {name: "GitHub-profiel"})[0]).toHaveAttribute("href", "https://github.com/salahooo");
     expect(screen.getByRole("link", {name: "Broncode"})).toHaveAttribute("href", "https://github.com/salahooo/gemeente-data-platform");
     expect(screen.getAllByRole("link", {name: "API-documentatie"}).at(-1)).toHaveAttribute("rel", "noopener noreferrer");
-    expect(screen.getByRole("link", {name: "LinkedIn"})).toHaveAttribute("href", "https://www.linkedin.com/in/salah-abdulkader/");
-    expect(screen.getByRole("link", {name: "LinkedIn"})).toHaveAttribute("rel", "noopener noreferrer");
+    expect(screen.getAllByRole("link", {name: "LinkedIn"})[0]).toHaveAttribute("href", "https://www.linkedin.com/in/salah-abdulkader/");
+    expect(screen.getAllByRole("link", {name: "LinkedIn"})[0]).toHaveAttribute("rel", "noopener noreferrer");
     await waitFor(() => expect(screen.getByLabelText("Databron en actualiteit")).toHaveTextContent("processed-safe"));
   });
   it("toont kerncijfers, null-waarschuwing en ranking uit de API", async () => {
@@ -74,6 +74,12 @@ describe("App", () => {
     fireEvent.change(screen.getByLabelText("Vergelijk met gemeente"), {target: {value: "Vo"}});
     fireEvent.click(await screen.findByRole("button", {name: /Anderstad/}));
     await waitFor(() => expect(location.search).toContain("compare=GM0002"));
+    expect(screen.getAllByRole("img", {name: "Vergelijking geselecteerde gemeenten"})).toHaveLength(1);
+    fireEvent.change(screen.getByLabelText("Vergelijkingsweergave"), {target: {value: "index"}});
+    expect(location.search).toContain("compare_mode=index");
+    expect(location.search).toContain("municipality=GM0001");
+    fireEvent.click(screen.getByRole("button", {name: "Vergelijking wissen"}));
+    await waitFor(() => expect(location.search).not.toContain("compare"));
   });
 
   it("kiest standaard het nieuwste beschikbare jaar en werkt de URL bij", async () => {

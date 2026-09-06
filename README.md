@@ -2,7 +2,9 @@
 
 [![CI](https://github.com/salahooo/gemeente-data-platform/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/salahooo/gemeente-data-platform/actions/workflows/ci.yml) ![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.14-3776AB) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1) ![React](https://img.shields.io/badge/React-TypeScript-61DAFB)
 
-Een controleerbaar data-platform voor gemeentelijke bevolkingsinformatie: van officiële CBS OData-records tot een responsive, read-only dashboard. Publieke deployment is in voorbereiding; er is nog geen live URL.
+Een controleerbaar data-platform voor gemeentelijke bevolkingsinformatie: van officiële CBS OData-records tot een responsive, read-only dashboard. Ontwikkeld door Salah Abdulkader als end-to-end portfolio voor data-engineering en applicatieontwikkeling.
+
+[Live dashboard](https://gemeente-data-platform-dashboard.onrender.com) · [Publieke API-docs](https://gemeente-data-platform-api.onrender.com/docs) · [GitHub-profiel](https://github.com/salahooo) · [LinkedIn](https://www.linkedin.com/in/salah-abdulkader/)
 
 ![Dashboard met echte, lokaal gevalideerde API-data](docs/images/dashboard-desktop.png)
 
@@ -22,6 +24,10 @@ flowchart LR
 
 ## Aantoonbare resultaten
 
+Het dashboard biedt nationale trends, gemeentelijke KPI's en leeftijdsopbouw, een interactieve kaart, CSV-export en deelbare URL-state. Eén vergelijking toont twee gemeenten in absolute aantallen of als index. Sticky sectienavigatie en inklapbare mobiele secties houden de pagina overzichtelijk. Broninformatie, lineage en een kwaliteitsmonitor ondersteunen de interpretatie.
+
+Onderstaande bevolkingscijfers beschrijven de gevalideerde dataset 2020–2026; de actuele beschikbare perioden staan in het dashboard.
+
 | Resultaat | Stand |
 | --- | --- |
 | Gemeentecodes in dimensie | 360, inclusief historische codes |
@@ -40,11 +46,18 @@ Historische codes blijven voor herleidbare tijdreeksen in de dimensie en zijn ni
 | Database | PostgreSQL 17, Alembic, `core`/`mart`/`ops` |
 | API/frontend | FastAPI least-privilege, React, TypeScript, Vite |
 | Infra/kwaliteit | Docker Compose, Nginx, pytest, Vitest, Playwright, GitHub Actions |
+| Publieke hosting | Render voor dashboard/API, Neon voor PostgreSQL |
 | Architectuur | C4, ERD, lineage, TOGAF-light, ADRs |
 
 ## Mijn bijdrage
 
 Dit portfolio-project demonstreert end-to-end data-engineering: Python en SQL, datacontracten en kwaliteitsvalidatie, idempotente transactionele loads, PostgreSQL-modellering, FastAPI-security, React/TypeScript, Docker Compose, unit-/integratie-/E2E-tests en GitHub Actions. De trade-offs staan in de C4-, ERD- en lineageweergaven, TOGAF-light en ADRs.
+
+## Kwaliteit en veilige deployment
+
+Datacontracten en checksums maken ETL-runs reproduceerbaar en herleidbaar; validatie gaat vooraf aan atomaire loads. PostgreSQL-rollen hebben minimale rechten en de publieke API is read-only. Secrets blijven buiten Git. GitHub Actions controleert wijzigingen vóór integratie; deployment en rollback zijn beschreven in het runbook. Het dashboard toont ontbrekende waarden als onbekend en maakt historische herindelingen expliciet.
+
+Bronnen: CBS **03759ned** (bevolking), **70072ned** (leeftijdsopbouw) en CBS/PDOK-gemeentegrenzen 2026. Bevolking en leeftijd gebruiken 1 januari als peildatum. Zie het [gemeenteprofiel en de kwaliteitsmonitor](docs/municipality-profile.md) voor dekking en interpretatie.
 
 ## Snel starten (Windows PowerShell)
 
@@ -74,4 +87,4 @@ Stop zonder volumes te verwijderen: `docker compose --profile dashboard stop das
 
 ## Aanbevolen GitHub-presentatie
 
-Beschrijving: “Traceerbaar CBS gemeentelijk bevolkingsplatform met Python, PostgreSQL, FastAPI en React.” Website: leeg tot fase 9B. Topics: `python`, `fastapi`, `postgresql`, `react`, `typescript`, `docker`, `data-engineering`, `cbs-open-data`, `github-actions`, `data-quality`, `alembic`, `government-data`.
+Beschrijving: “Traceerbaar CBS gemeentelijk bevolkingsplatform met Python, PostgreSQL, FastAPI en React.” Website: [live dashboard](https://gemeente-data-platform-dashboard.onrender.com). Topics: `python`, `fastapi`, `postgresql`, `react`, `typescript`, `docker`, `data-engineering`, `cbs-open-data`, `github-actions`, `data-quality`, `alembic`, `government-data`.
