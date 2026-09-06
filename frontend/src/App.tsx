@@ -1,7 +1,9 @@
-import {useEffect, useState} from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
 import {Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis} from "recharts";
 
 import {api, publicApiUrl} from "./api";
+import {Feedback, useFeedback, copyViewLink, DashboardSkeleton} from "./Feedback";
+import {startDashboard, STARTUP_ATTEMPTS, COLD_START_MESSAGE} from "./startup";
 import {annualChanges} from "./changes";
 import {number, percent} from "./format";
 import {LINKEDIN_URL} from "./portfolio";
@@ -30,57 +32,112 @@ export function App() {
   const [fullRanking, setFullRanking] = useState<Ranking[]>([]);
   const [lineage, setLineage] = useState<Lineage | null>(null);
   const [status, setStatus] = useState("Laden");
-  const [error, setError] = useState("");
+  const {message, notify, clear} = useFeedback();
+  const setError = useCallback((text: string) => { if (text) notify("error", text); else clear(); }, [notify, clear]);
+  const [busy, setBusy] = useState(true);
+  const [loaded, setLoaded] = useState(false);
+  const [warming, setWarming] = useState(false);
+  const [attempt, setAttempt] = useState(1);
+  const activeLoad = useRef<AbortController | null>(null);
+  const selectionRequest = useRef<AbortController | null>(null);
+  const sharing = useRef(false);
+  const copied = message?.kind === "success" && message.text === "Weergavelink gekopieerd.";
 
   async function select(municipality: Municipality) {
+    if (activeLoad.current) return;
+    selectionRequest.current?.abort();
+    const controller = new AbortController();
+    selectionRequest.current = controller;
     try {
       setError("");
-      const response = await api.population(municipality.municipality_code);
+      const response = await api.population(municipality.municipality_code, controller.signal);
+      controller.signal.throwIfAborted();
       setSelected(municipality);
       setSearch(municipality.municipality_name);
       setItems([]);
       setSeries(response.observations);
-    } catch { setError("De gemeentelijke tijdreeks kon niet worden geladen."); }
+    } catch { if (!controller.signal.aborted) setError("De gemeentelijke tijdreeks kon niet worden geladen."); }
   }
 
   async function selectComparison(municipality: Municipality) {
+    if (activeLoad.current) return;
+    selectionRequest.current?.abort();
+    const controller = new AbortController();
+    selectionRequest.current = controller;
     try {
       setError("");
-      const response = await api.population(municipality.municipality_code);
+      const response = await api.population(municipality.municipality_code, controller.signal);
+      controller.signal.throwIfAborted();
       setComparison(municipality);
       setCompareSearch(municipality.municipality_name);
       setCompareItems([]);
       setComparisonSeries(response.observations);
-    } catch { setError("De vergelijkingstijdreeks kon niet worden geladen."); }
+    } catch { if (!controller.signal.aborted) setError("De vergelijkingstijdreeks kon niet worden geladen."); }
   }
 
-  async function load() {
+  async function load(requestedYear = year) {
+    if (activeLoad.current) return;
+    const controller = new AbortController();
+    activeLoad.current = controller;
+    selectionRequest.current?.abort();
+    setBusy(true); setWarming(false); setAttempt(1); clear(); setStatus("Laden");
+    const warningTimer = setTimeout(() => { setWarming(true); setStatus("Opstarten…"); }, 5000);
+    controller.signal.addEventListener("abort", () => clearTimeout(warningTimer), {once: true});
     try {
-      setError(""); setStatus("Laden"); await api.ready();
-      const [availableYears, nationalSeries, latestLineage] = await Promise.all([api.years(), api.national(), api.lineage().catch(() => null)]);
-      const selectedYear = year || availableYears.at(-1)?.year || 0;
-      setYears(availableYears); setNational(nationalSeries); setYear(selectedYear); setLineage(latestLineage);
-      setRanking(await api.ranking(selectedYear));
-      const initialCode = initialRoute.get("municipality"); const initialComparison = initialRoute.get("compare");
-      if (initialCode && !selected) await select(await api.municipality(initialCode));
-      if (initialComparison && !comparison && initialComparison !== initialCode) await selectComparison(await api.municipality(initialComparison));
-      setStatus("Beschikbaar");
-    } catch { setStatus("Niet beschikbaar"); setError("De gegevens zijn tijdelijk niet beschikbaar. Probeer het later opnieuw."); }
+      const snapshot = await startDashboard({signal: controller.signal, ready: api.ready,
+        onAttempt: (value) => { setAttempt(value); if (value > 1) { setWarming(true); setStatus("Opstarten…"); } },
+        onReady: () => { clearTimeout(warningTimer); setWarming(false); setStatus("Beschikbaar"); },
+        onDataFailure: () => { setWarming(true); setStatus("Opstarten…"); },
+        load: async (signal) => {
+          const [availableYears, nationalSeries, latestLineage] = await Promise.all([
+            api.years(signal), api.national(signal), api.lineage(signal).catch(() => lineage),
+          ]);
+          const selectedYear = requestedYear || availableYears.at(-1)?.year || 0;
+          const primaryCode = selected?.municipality_code ?? (!loaded ? initialRoute.get("municipality") : null);
+          const comparisonCode = comparison?.municipality_code ?? (!loaded ? initialRoute.get("compare") : null);
+          const readMunicipality = async (code: string | null) => code ? {
+            municipality: await api.municipality(code, signal),
+            observations: (await api.population(code, signal)).observations,
+          } : null;
+          const [allRanks, primary, secondary] = await Promise.all([
+            api.ranking(selectedYear, 500, signal), readMunicipality(primaryCode),
+            readMunicipality(comparisonCode !== primaryCode ? comparisonCode : null),
+          ]);
+          return {availableYears, nationalSeries, latestLineage, selectedYear, allRanks, primary, secondary};
+        },
+      });
+      controller.signal.throwIfAborted();
+      // React batches the complete snapshot; retain old data until every request succeeds.
+      setYears(snapshot.availableYears); setNational(snapshot.nationalSeries); setLineage(snapshot.latestLineage);
+      setYear(snapshot.selectedYear); setFullRanking(snapshot.allRanks); setRanking(snapshot.allRanks.slice(0, 10));
+      if (snapshot.primary) { setSelected(snapshot.primary.municipality); setSearch(snapshot.primary.municipality.municipality_name); setSeries(snapshot.primary.observations); }
+      if (snapshot.secondary) { setComparison(snapshot.secondary.municipality); setCompareSearch(snapshot.secondary.municipality.municipality_name); setComparisonSeries(snapshot.secondary.observations); }
+      setLoaded(true); setStatus("Beschikbaar"); setWarming(false);
+    } catch {
+      if (!controller.signal.aborted) { setStatus("Niet beschikbaar"); setWarming(false); setError("De gegevens zijn tijdelijk niet beschikbaar. Probeer het later opnieuw."); }
+    } finally {
+      clearTimeout(warningTimer);
+      if (activeLoad.current === controller) { activeLoad.current = null; if (!controller.signal.aborted) setBusy(false); }
+    }
   }
 
-  useEffect(() => { void load(); }, []);
   useEffect(() => {
-    if (!year) return;
-    const query = new URLSearchParams({year: String(year)});
-    if (selected) query.set("municipality", selected.municipality_code);
-    if (comparison) query.set("compare", comparison.municipality_code);
-    history.replaceState(null, "", `?${query.toString()}`);
-    void api.ranking(year).then(setRanking).catch(() => setError("De ranking kon niet worden geladen."));
-    void api.ranking(year, 500).then(setFullRanking).catch(() => setFullRanking([]));
-  }, [year, selected, comparison]);
+    void load();
+    const abort = () => { activeLoad.current?.abort(); activeLoad.current = null; selectionRequest.current?.abort(); };
+    window.addEventListener("pagehide", abort);
+    return () => { abort(); window.removeEventListener("pagehide", abort); };
+  }, []);
+  useEffect(() => {
+    if (!loaded) return;
+    const query = new URLSearchParams(location.search);
+    query.set("year", String(year));
+    if (selected) query.set("municipality", selected.municipality_code); else query.delete("municipality");
+    if (comparison) query.set("compare", comparison.municipality_code); else { query.delete("compare"); query.delete("compare_mode"); }
+    history.replaceState(null, "", `?${query.toString()}${location.hash}`);
+  }, [loaded, year, selected, comparison]);
 
-  useMunicipalitySearch(search, selected?.municipality_name, setItems, setError);
-  useMunicipalitySearch(compareSearch, comparison?.municipality_name, setCompareItems, setError);
+  useMunicipalitySearch(busy ? "" : search, selected?.municipality_name, setItems, setError);
+  useMunicipalitySearch(busy ? "" : compareSearch, comparison?.municipality_name, setCompareItems, setError);
 
   const current = national.find((item) => item.year === year);
   const previous = national.find((item) => item.year === year - 1);
@@ -89,24 +146,37 @@ export function App() {
   const selectedChange = annualChanges(series).find((item) => item.year === year)?.change ?? null;
   const selectedRank = fullRanking.find((item) => item.municipality_code === selected?.municipality_code)?.rank ?? null;
   const downloadCsv = () => {
+    try {
     const timestamp = new Date().toISOString();
     const rows = comparison ? comparisonData(selected!, series, comparison, comparisonSeries).map((item) => ({source: "CBS Open Data", export_timestamp: timestamp, year: item.year as number, municipality_code: selected!.municipality_code, population: item.primary as number | null, comparison_code: comparison.municipality_code, comparison_population: item.secondary as number | null})) : selected ? series.map((item) => ({source: "CBS Open Data", export_timestamp: timestamp, year: item.year, municipality_code: selected.municipality_code, population: item.population_january_1})) : national.map((item) => ({source: "CBS Open Data", export_timestamp: timestamp, year: item.year, national_population: item.population_january_1}));
     const url = URL.createObjectURL(new Blob([csvDocument(rows)], {type: "text/csv;charset=utf-8"}));
-    const link = document.createElement("a"); link.href = url; link.download = `gemeente-data-${year}.csv`; link.click(); URL.revokeObjectURL(url);
+    const link = document.createElement("a"); link.href = url; link.download = `gemeente-data-${year}.csv`; try { link.click(); } finally { URL.revokeObjectURL(url); }
+    notify("success", "CSV gedownload.");
+    } catch { setError("CSV downloaden is mislukt. Probeer het opnieuw."); }
   };
-  const share = async () => { try { await navigator.clipboard.writeText(location.href); setError("Weergavelink gekopieerd."); } catch { window.prompt("Kopieer deze link:", location.href); } };
+  const share = async () => {
+    if (sharing.current || copied) return;
+    sharing.current = true;
+    try { await copyViewLink(); notify("success", "Weergavelink gekopieerd."); }
+    catch { setError("De weergavelink kon niet worden gekopieerd. Probeer het opnieuw."); }
+    finally { sharing.current = false; }
+  };
 
   return <main>
-    <header><div><p className="eyebrow">CBS Open Data · Bevolking in beeld</p><h1>Gemeente Data Platform</h1></div><div className="header-actions"><div className={`status ${status === "Beschikbaar" ? "ok" : "bad"}`} aria-live="polite">API: {status}</div><a className="button secondary" href={publicApiUrl("/docs")} target="_blank" rel="noopener noreferrer">API-documentatie</a><button onClick={() => void load()}>Vernieuwen</button></div></header>
+    <header><div><p className="eyebrow">CBS Open Data · Bevolking in beeld</p><h1>Gemeente Data Platform</h1></div><div className="header-actions"><div className={`status ${status === "Beschikbaar" ? "ok" : status === "Niet beschikbaar" ? "bad" : "starting"}`} aria-live="polite">API: {status}</div><a className="button secondary" href={publicApiUrl("/docs")} target="_blank" rel="noopener noreferrer">API-documentatie</a><button disabled={busy} aria-busy={busy} onClick={() => void load()}>{busy ? "Bezig met laden…" : "Vernieuwen"}</button></div></header>
     <nav className="section-nav" aria-label="Secties"><a href="#overzicht">Overzicht</a><a href="#nederland">Nederland</a><a href="#gemeente">Gemeente</a><a href="#vergelijken">Vergelijken</a><a href="#kaart">Kaart</a><a href="#bron">Bron en techniek</a></nav>
-    <section className="filters" id="overzicht" aria-label="Dashboardfilters"><label>Jaar<select aria-label="Jaar" value={year} onChange={(event) => setYear(Number(event.target.value))}>{years.map((item) => <option key={item.year} value={item.year}>{item.year}</option>)}</select></label><SearchControl label="Gemeente" value={search} onChange={setSearch} items={items} onSelect={select} /><button onClick={() => { setSearch(""); setSelected(null); setSeries([]); setCompareSearch(""); setComparison(null); setComparisonSeries([]); }}>Wis filters</button><button onClick={downloadCsv}>Download CSV</button><button onClick={() => void share()}>Deel weergave</button></section>
-    {error && <p role="alert" className="error">{error}</p>}
-    {current?.average_population === null && <p className="warning">Gemiddelde bevolking voor {year} ontbreekt; dit is geen nulwaarde.</p>}
+    <fieldset disabled={busy} className="filters" id="overzicht" aria-label="Dashboardfilters"><label>Jaar<select aria-label="Jaar" value={year} onChange={(event) => void load(Number(event.target.value))}>{years.map((item) => <option key={item.year} value={item.year}>{item.year}</option>)}</select></label><SearchControl label="Gemeente" value={search} onChange={setSearch} items={items} onSelect={select} /><button onClick={() => { setSearch(""); setSelected(null); setSeries([]); setCompareSearch(""); setComparison(null); setComparisonSeries([]); }}>Wis filters</button><button onClick={downloadCsv}>Download CSV</button><button onClick={() => void share()}>{copied ? "✓ Link gekopieerd" : "Deel weergave"}</button></fieldset>
+    {message && <Feedback kind={message.kind} onClose={clear}>{message.text}</Feedback>}
+    {warming && <Feedback kind="warning">{loaded ? "De verbinding wordt hersteld. De laatst geladen gegevens blijven zichtbaar. " : ""}{COLD_START_MESSAGE}<small className="attempt">Poging {attempt} van {STARTUP_ATTEMPTS}</small></Feedback>}
+    {status === "Niet beschikbaar" && <button className="retry-button" onClick={() => void load()}>Opnieuw proberen</button>}
+    {!loaded ? busy ? <DashboardSkeleton /> : <Feedback kind="info">Er zijn nog geen dashboardgegevens geladen.</Feedback> : <>
+    {current?.average_population === null && <Feedback kind="warning">Gemiddelde bevolking voor {year} ontbreekt; dit is geen nulwaarde.</Feedback>}
     <section className="kpis" aria-label="Kerncijfers"><Card title="Nederlandse bevolking" value={number(current?.population_january_1 ?? null)} /><Card title="Gemeenten met waarneming" value={number(current?.municipality_count ?? null)} /><Card title="Verandering t.o.v. vorig jaar" value={number(nationalChange)} /><Card title="Procentuele verandering" value={previous && nationalChange !== null && previous.population_january_1 ? percent(String(nationalChange / previous.population_january_1 * 100)) : "Niet beschikbaar"} /></section>
     <section className="grid" id="nederland" aria-label="Bevolkingsanalyses" aria-busy={status === "Laden"}><Chart title="Nationale bevolkingstrend" data={national} dataKey="population_january_1" xKey="year" /><Chart title="Top 10 gemeenten" data={ranking} dataKey="population_january_1" xKey="municipality_name" bar /><RankingTable ranking={ranking} year={year} /><Chart title="Jaarlijkse verandering Nederland" data={annualChanges(national)} dataKey="change" xKey="year" bar />{selected ? <><MunicipalityKpis municipality={selected} observation={selectedObservation} change={selectedChange} rank={selectedRank} /><Chart title={`Tijdreeks ${selected.municipality_name}`} data={series} dataKey="population_january_1" xKey="year" /><Chart title={`Jaarlijkse verandering ${selected.municipality_name}`} data={annualChanges(series)} dataKey="change" xKey="year" bar /><ComparisonPanel selected={selected} comparison={comparison} series={series} comparisonSeries={comparisonSeries} search={compareSearch} items={compareItems} onSearch={setCompareSearch} onSelect={selectComparison} onClear={() => { setCompareSearch(""); setComparison(null); setComparisonSeries([]); }} /></> : <SelectionCard />}</section>
     <MunicipalityMap year={year} ranking={fullRanking} selectedCode={selected?.municipality_code} onSelect={(item) => void select(item)} />
     {selected && comparison && <IndexComparison first={selected} second={comparison} firstSeries={series} secondSeries={comparisonSeries} />}
     <LineageSummary years={years} lineage={lineage} />
+    </>}
     <footer><div><p className="eyebrow">Van bron tot inzicht</p><h2>Ontwikkeld door Salah Abdulkader</h2><p className="provenance">Een end-to-end portfolio-dataplatform op basis van CBS Open Data. Historische herindelingen kunnen tijdreeksen beïnvloeden.</p></div><div><nav aria-label="Portfolio en documentatie"><SocialLink href="https://github.com/salahooo" label="GitHub-profiel" brand="github" /><SocialLink href="https://github.com/salahooo/gemeente-data-platform" label="Broncode" brand="github" repository /><SocialLink href={LINKEDIN_URL} label="LinkedIn" brand="linkedin" /><a href={publicApiUrl("/docs")} target="_blank" rel="noopener noreferrer">API-documentatie</a></nav><p className="technology">Python · PostgreSQL · FastAPI · React · TypeScript · Docker · GitHub Actions</p></div></footer>
   </main>;
 }

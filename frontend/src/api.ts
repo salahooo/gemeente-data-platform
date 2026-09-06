@@ -21,28 +21,34 @@ export function publicApiUrl(path: string): string {
   return `${apiBaseUrl}${path}`;
 }
 
+export class ApiError extends Error { constructor(public status: number) { super(status === 404 ? "Niet gevonden" : `API-fout (${status})`); } }
+
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeout);
+  const abort = () => controller.abort();
+  signal?.addEventListener("abort", abort, {once: true});
+  if (signal?.aborted) abort();
+  const timer = setTimeout(abort, timeout);
   try {
-    const response = await fetch(publicApiUrl(path), {signal: signal ?? controller.signal});
+    const response = await fetch(publicApiUrl(path), {signal: controller.signal});
     if (!response.ok) {
-      throw new Error(response.status === 404 ? "Niet gevonden" : `API-fout (${response.status})`);
+      throw new ApiError(response.status);
     }
     return await response.json() as T;
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
   }
 }
 
 export const api = {
-  ready: () => get<{status: string}>("/ready"),
-  years: () => get<Year[]>("/api/v1/years"),
-  national: () => get<National[]>("/api/v1/national/population"),
-  ranking: (year: number, limit = 10) => get<Ranking[]>(`/api/v1/rankings/population?year=${year}&limit=${limit}`),
+  ready: async (signal?: AbortSignal) => { const result = await get<{status: string}>("/ready", signal); if (result.status !== "ready") throw new ApiError(503); return result; },
+  years: (signal?: AbortSignal) => get<Year[]>("/api/v1/years", signal),
+  national: (signal?: AbortSignal) => get<National[]>("/api/v1/national/population", signal),
+  ranking: (year: number, limit = 10, signal?: AbortSignal) => get<Ranking[]>(`/api/v1/rankings/population?year=${year}&limit=${limit}`, signal),
   municipalities: (search: string, signal?: AbortSignal) =>
     get<{items: Municipality[]}>(`/api/v1/municipalities?search=${encodeURIComponent(search)}&page_size=10`, signal),
-  municipality: (code: string) => get<Municipality>(`/api/v1/municipalities/${code}`),
-  population: (code: string) => get<{observations: Observation[]}>(`/api/v1/municipalities/${code}/population`),
-  lineage: () => get<Lineage | null>("/api/v1/lineage/latest"),
+  municipality: (code: string, signal?: AbortSignal) => get<Municipality>(`/api/v1/municipalities/${code}`, signal),
+  population: (code: string, signal?: AbortSignal) => get<{observations: Observation[]}>(`/api/v1/municipalities/${code}/population`, signal),
+  lineage: (signal?: AbortSignal) => get<Lineage | null>("/api/v1/lineage/latest", signal),
 };
